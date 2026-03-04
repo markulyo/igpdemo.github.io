@@ -1,0 +1,1866 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IGP — Integrated Geospatial Platform | NIA</title>
+<link href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css" rel="stylesheet">
+<script src="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0b1120;
+    --panel: #111827;
+    --panel2: #1a2235;
+    --border: #1f2d42;
+    --accent: #22c55e;
+    --accent2: #0ea5e9;
+    --accent3: #f59e0b;
+    --danger: #ef4444;
+    --text: #e2e8f0;
+    --muted: #64748b;
+    --dim-a: #22c55e;
+    --dim-b: #f59e0b;
+    --dim-c: #0ea5e9;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+
+  /* ── HEADER ── */
+  header { display: flex; align-items: center; justify-content: space-between; padding: 0 20px; height: 54px; background: var(--panel); border-bottom: 1px solid var(--border); flex-shrink: 0; z-index: 100; }
+  .logo { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 18px; letter-spacing: -0.5px; color: var(--accent); display: flex; align-items: center; gap: 8px; }
+  .logo span { color: var(--text); }
+  .header-actions { display: flex; gap: 8px; align-items: center; }
+
+  /* ── BUTTONS ── */
+  .btn { display: flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: 8px; border: none; font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.15s; }
+  .btn-ghost { background: transparent; color: var(--muted); border: 1px solid var(--border); }
+  .btn-ghost:hover { background: var(--panel2); color: var(--text); }
+  .btn-ghost.active { background: var(--accent); border-color: var(--accent); color: #000; }
+  .btn-primary { background: var(--accent); color: #000; }
+  .btn-primary:hover { background: #16a34a; }
+  .btn-blue { background: var(--accent2); color: #fff; }
+  .btn-blue:hover { background: #0284c7; }
+  .btn-amber { background: var(--accent3); color: #000; }
+  .btn-amber:hover { background: #d97706; }
+
+  /* ── MAIN LAYOUT ── */
+  .main { display: flex; flex: 1; overflow: hidden; }
+
+  /* ── SIDEBAR ── */
+  .sidebar { width: 300px; background: var(--panel); border-right: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; flex-shrink: 0; }
+  .sidebar-scroll { flex: 1; overflow-y: auto; padding: 12px; }
+  .sidebar-scroll::-webkit-scrollbar { width: 4px; }
+  .sidebar-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+  /* ── DIMENSION SECTIONS ── */
+  .dim-section { margin-bottom: 14px; }
+  .dim-header { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 8px; margin-bottom: 6px; font-family: 'Syne', sans-serif; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; cursor: pointer; user-select: none; transition: opacity 0.15s; }
+  .dim-header:hover { opacity: 0.85; }
+  .dim-a-header { background: rgba(34,197,94,0.12); color: var(--dim-a); border: 1px solid rgba(34,197,94,0.2); }
+  .dim-b-header { background: rgba(245,158,11,0.12); color: var(--dim-b); border: 1px solid rgba(245,158,11,0.2); }
+  .dim-c-header { background: rgba(14,165,233,0.12); color: var(--dim-c); border: 1px solid rgba(14,165,233,0.2); }
+  .dim-badge { margin-left: auto; background: rgba(255,255,255,0.1); border-radius: 20px; padding: 2px 8px; font-size: 10px; }
+  .dim-chevron { font-style: normal; transition: transform 0.22s; }
+  .dim-section.collapsed .dim-chevron { transform: rotate(-90deg); }
+  .layer-group { overflow: hidden; transition: max-height 0.28s ease; }
+  .layer-group.closed { max-height: 0 !important; }
+
+  /* ── LAYER ITEMS ── */
+  .layer-item { display: flex; align-items: center; padding: 8px 10px; border-radius: 8px; margin-bottom: 3px; cursor: default; transition: background 0.12s; gap: 10px; border: 1px solid transparent; }
+  .layer-item:hover { background: var(--panel2); border-color: var(--border); }
+  .layer-item.active { background: var(--panel2); border-color: var(--border); }
+  .layer-icon { width: 28px; height: 28px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0; }
+  .layer-info { flex: 1; min-width: 0; }
+  .layer-name { font-size: 12px; font-weight: 500; color: var(--text); line-height: 1.3; }
+  .layer-sub { font-size: 10px; color: var(--muted); margin-top: 1px; }
+  .layer-api-status { font-size: 9px; margin-top: 2px; font-style: italic; }
+  .layer-api-status.configured { color: var(--accent); }
+  .layer-api-status.not-set { color: var(--muted); }
+  .layer-api-status.loading { color: var(--accent3); }
+  .layer-api-status.error { color: var(--danger); }
+
+  /* ── TOGGLE SWITCH ── */
+  .toggle { position: relative; width: 34px; height: 18px; flex-shrink: 0; }
+  .toggle input { opacity: 0; width: 0; height: 0; }
+  .slider { position: absolute; inset: 0; background: var(--border); border-radius: 18px; cursor: pointer; transition: 0.2s; }
+  .slider:before { content: ''; position: absolute; width: 12px; height: 12px; left: 3px; top: 3px; background: white; border-radius: 50%; transition: 0.2s; }
+  .toggle input:checked + .slider { background: var(--accent); }
+  .toggle input:checked + .slider:before { transform: translateX(16px); }
+  .toggle input:disabled + .slider { opacity: 0.3; cursor: not-allowed; }
+
+  /* ── SIDEBAR FOOTER ── */
+  .sidebar-footer { padding: 12px; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 8px; }
+  .sidebar-footer-title { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: var(--muted); margin-bottom: 2px; }
+  .upload-area { border: 2px dashed var(--border); border-radius: 10px; padding: 14px; text-align: center; cursor: pointer; transition: all 0.15s; background: transparent; }
+  .upload-area:hover, .upload-area.dragover { border-color: var(--accent2); background: rgba(14,165,233,0.05); }
+  .upload-area .upload-icon { font-size: 22px; margin-bottom: 4px; }
+  .upload-area p { font-size: 11px; color: var(--muted); }
+  .upload-area strong { color: var(--accent2); }
+
+  /* ── MAP ── */
+  #map { flex: 1; position: relative; }
+
+  /* ── MAP TOOLBAR ── */
+  .map-toolbar { position: absolute; top: 12px; right: 12px; display: flex; flex-direction: column; gap: 6px; z-index: 10; }
+  .tool-btn { width: 38px; height: 38px; border-radius: 8px; background: var(--panel); border: 1px solid var(--border); color: var(--text); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 16px; transition: all 0.15s; }
+  .tool-btn:hover { background: var(--panel2); border-color: var(--accent2); }
+  .tool-btn.active { background: var(--accent); border-color: var(--accent); color: #000; }
+
+  /* ── STATUS BAR ── */
+  .status-bar { position: absolute; bottom: 30px; left: 12px; background: rgba(11,17,32,0.9); border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; font-size: 11px; color: var(--muted); backdrop-filter: blur(6px); z-index: 10; display: flex; gap: 14px; align-items: center; }
+  .status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); display: inline-block; margin-right: 5px; animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+  .coord-display { font-family: monospace; font-size: 10px; color: var(--muted); }
+
+  /* ── DRAW INDICATOR ── */
+  .draw-indicator { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); background: var(--accent2); color: #fff; padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 600; z-index: 10; display: none; white-space: nowrap; animation: breathe 2s infinite; }
+  @keyframes breathe { 0%,100%{opacity:1; box-shadow:0 0 0 0 rgba(14,165,233,0.4)} 50%{opacity:0.85; box-shadow:0 0 0 8px rgba(14,165,233,0)} }
+
+  /* ── LEGEND ── */
+  .legend-panel { position: absolute; bottom: 30px; right: 12px; background: rgba(17,24,39,0.95); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; font-size: 11px; backdrop-filter: blur(8px); z-index: 10; min-width: 180px; max-width: 220px; display: none; }
+  .legend-panel h4 { font-family: 'Syne', sans-serif; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: var(--muted); margin-bottom: 8px; }
+  .legend-item { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; font-size: 11px; }
+  .legend-swatch { width: 14px; height: 14px; border-radius: 3px; flex-shrink: 0; }
+  .legend-layer-block { margin-bottom: 10px; }
+  .legend-layer-title { font-size: 10px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 5px; display:flex; align-items:center; gap:6px; }
+  .legend-field-select { background: var(--panel2); border: 1px solid var(--border); color: var(--text); border-radius: 4px; font-size: 10px; padding: 1px 4px; cursor:pointer; max-width: 130px; }
+  .legend-value-row { display: flex; align-items: center; gap: 6px; margin-bottom: 3px; font-size: 10px; color: var(--text); }
+  .legend-value-swatch { width: 12px; height: 12px; border-radius: 2px; flex-shrink: 0; border: 1px solid rgba(255,255,255,0.15); }
+  .legend-value-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 155px; }
+
+  /* ── KML CHIPS ── */
+  .kml-section { padding: 10px 12px; border-top: 1px solid var(--border); background: rgba(14,165,233,0.03); display: none; }
+  .kml-section-title { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: var(--muted); margin-bottom: 7px; }
+  .kml-chip { display: flex; align-items: center; gap: 8px; padding: 5px 8px; background: rgba(14,165,233,0.1); border: 1px solid rgba(14,165,233,0.25); border-radius: 6px; margin-bottom: 4px; font-size: 11px; }
+  .kml-chip .chip-name { flex: 1; color: var(--text); font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .chip-del { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 13px; }
+  .chip-del:hover { color: var(--danger); }
+
+  /* ── DRAWN POLYGONS ── */
+  .poly-section { padding: 10px 12px; border-top: 1px solid var(--border); background: rgba(34,197,94,0.03); display: none; }
+  .poly-chip { display: flex; align-items: center; gap: 8px; padding: 5px 8px; background: rgba(34,197,94,0.08); border: 1px solid rgba(34,197,94,0.2); border-radius: 6px; margin-bottom: 4px; font-size: 11px; }
+  .poly-chip .chip-name { flex: 1; color: var(--text); font-weight: 500; }
+
+  /* ── MODAL ── */
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 1000; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px); opacity: 0; pointer-events: none; transition: opacity 0.2s; }
+  .modal-overlay.show { opacity: 1; pointer-events: all; }
+  .modal { background: var(--panel); border: 1px solid var(--border); border-radius: 14px; width: 620px; max-width: 95vw; max-height: 88vh; display: flex; flex-direction: column; overflow: hidden; transform: translateY(20px); transition: transform 0.2s; }
+  .modal-overlay.show .modal { transform: translateY(0); }
+  .modal-header { padding: 18px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+  .modal-title { font-family: 'Syne', sans-serif; font-size: 16px; font-weight: 700; }
+  .modal-close { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 18px; }
+  .modal-close:hover { color: var(--danger); }
+  .modal-body { padding: 20px; overflow-y: auto; flex: 1; }
+  .modal-body::-webkit-scrollbar { width: 4px; }
+  .modal-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+  .modal-footer { padding: 14px 20px; border-top: 1px solid var(--border); display: flex; gap: 8px; justify-content: flex-end; }
+
+  /* ── REPORT ── */
+  .report-stat-row { display: flex; gap: 10px; margin-bottom: 16px; }
+  .report-stat-card { flex: 1; background: var(--panel2); border: 1px solid var(--border); border-radius: 8px; padding: 12px; text-align: center; }
+  .report-stat-num { font-family: 'Syne', sans-serif; font-size: 26px; font-weight: 700; }
+  .report-stat-lbl { font-size: 10px; color: var(--muted); margin-top: 3px; }
+  .rpt-section { margin-bottom: 18px; }
+  .rpt-section-title { font-family: 'Syne', sans-serif; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: var(--muted); padding-bottom: 6px; border-bottom: 1px solid var(--border); margin-bottom: 10px; }
+  .report-tag { display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 500; margin: 2px; }
+  .rpt-a { background: rgba(34,197,94,0.12); color: var(--dim-a); border: 1px solid rgba(34,197,94,0.25); }
+  .rpt-b { background: rgba(245,158,11,0.12); color: var(--dim-b); border: 1px solid rgba(245,158,11,0.25); }
+  .rpt-c { background: rgba(14,165,233,0.12); color: var(--dim-c); border: 1px solid rgba(14,165,233,0.25); }
+  .val-item { display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px; border-radius: 8px; margin-bottom: 7px; font-size: 12px; line-height: 1.5; }
+  .val-ok   { background: rgba(34,197,94,0.08);  border: 1px solid rgba(34,197,94,0.2); }
+  .val-warn { background: rgba(245,158,11,0.08); border: 1px solid rgba(245,158,11,0.2); }
+  .val-err  { background: rgba(239,68,68,0.08);  border: 1px solid rgba(239,68,68,0.2); }
+
+  /* ── TOAST ── */
+  .toast-container { position: fixed; top: 64px; right: 14px; z-index: 2000; display: flex; flex-direction: column; gap: 6px; }
+  .toast { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; font-size: 12px; display: flex; align-items: center; gap: 8px; animation: slideIn 0.2s ease; max-width: 290px; box-shadow: 0 4px 20px rgba(0,0,0,0.4); }
+  .toast.ok   { border-left: 3px solid var(--accent); }
+  .toast.warn { border-left: 3px solid var(--accent3); }
+  .toast.err  { border-left: 3px solid var(--danger); }
+  .toast.info { border-left: 3px solid var(--accent2); }
+  @keyframes slideIn { from{opacity:0;transform:translateX(14px)} to{opacity:1;transform:translateX(0)} }
+
+  /* Mapbox overrides */
+  .mapboxgl-ctrl-logo, .mapboxgl-ctrl-attrib { display: none !important; }
+  .mapboxgl-popup-content { background: var(--panel2) !important; border: 1px solid var(--border) !important; color: var(--text) !important; border-radius: 8px !important; padding: 10px 13px !important; font-family: 'DM Sans', sans-serif !important; font-size: 12px !important; }
+  .mapboxgl-popup-tip { display: none !important; }
+  .mapboxgl-popup-close-button { color: var(--muted) !important; font-size: 16px !important; }
+
+
+</style>
+</head>
+<body>
+
+
+<!-- ═══════════════════════════════════════ HEADER ═══ -->
+<header>
+  <div class="logo">🗺 <span>IGP</span>
+    <span style="font-size:11px;font-weight:400;color:var(--muted);margin-left:6px;border-left:1px solid var(--border);padding-left:10px;">Integrated Geospatial Platform · NIA Philippines</span>
+  </div>
+<div class="header-actions">
+    <button class="btn btn-ghost" onclick="clearAllLayers()">⊗ Clear All</button>
+    <button class="btn btn-ghost" id="drawBtn" onclick="toggleDraw()">✏ Draw Polygon</button>
+    <button class="btn btn-ghost" onclick="downloadKML()">⬇ Export KML</button>
+    <button class="btn btn-blue" onclick="document.getElementById('kmlInput').click()">📂 Upload KML</button>
+    <input type="file" id="kmlInput" accept=".kml" multiple style="display:none" onchange="handleKMLUpload(event)">
+    <button class="btn btn-amber" onclick="openReport()">📋 Map Report</button>
+  </div>
+</header>
+
+<!-- ═══════════════════════════════════════ MAIN ═══ -->
+<div class="main">
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="sidebar-scroll">
+
+      <!-- ── DIMENSION A ── -->
+      <div class="dim-section" id="sec-a">
+        <div class="dim-header dim-a-header" onclick="toggleDim('sec-a','grp-a')">
+          🌱 Dim A — Technical Suitability
+          <span class="dim-badge" id="cnt-a">0/5</span>
+          <em class="dim-chevron">›</em>
+        </div>
+        <div class="layer-group" id="grp-a" style="max-height:1000px">
+          <!-- A1 -->
+          <div class="layer-item" id="item-groundwater">
+            <div class="layer-icon" style="background:rgba(34,197,94,0.12)">💧</div>
+            <div class="layer-info">
+              <div class="layer-name">Groundwater Map</div>
+              <div class="layer-sub">Water Source</div>
+              <div class="layer-api-status not-set" id="st-groundwater">No API configured</div>
+            </div>
+            <label class="toggle"><input type="checkbox" id="chk-groundwater" disabled onchange="toggleLayer('groundwater')"><span class="slider"></span></label>
+          </div>
+          <!-- A2 -->
+          <div class="layer-item" id="item-climate">
+            <div class="layer-icon" style="background:rgba(34,197,94,0.12)">🌤</div>
+            <div class="layer-info">
+              <div class="layer-name">Climate Type</div>
+              <div class="layer-sub">Water Availability</div>
+              <div class="layer-api-status not-set" id="st-climate">No API configured</div>
+            </div>
+            <label class="toggle"><input type="checkbox" id="chk-climate" disabled onchange="toggleLayer('climate')"><span class="slider"></span></label>
+          </div>
+          <!-- A3 -->
+          <div class="layer-item" id="item-soil">
+            <div class="layer-icon" style="background:rgba(34,197,94,0.12)">🌍</div>
+            <div class="layer-info">
+              <div class="layer-name">Soil Suitability</div>
+              <div class="layer-sub">Agro-potential / Classification</div>
+              <div class="layer-api-status not-set" id="st-soil">No API configured</div>
+            </div>
+            <label class="toggle"><input type="checkbox" id="chk-soil" disabled onchange="toggleLayer('soil')"><span class="slider"></span></label>
+          </div>
+          <!-- A4 -->
+          <div class="layer-item" id="item-solar">
+            <div class="layer-icon" style="background:rgba(34,197,94,0.12)">☀️</div>
+            <div class="layer-info">
+              <div class="layer-name">Solar Irrigation (SPIS)</div>
+              <div class="layer-sub">Energy Potential</div>
+              <div class="layer-api-status not-set" id="st-solar">No API configured</div>
+            </div>
+            <label class="toggle"><input type="checkbox" id="chk-solar" disabled onchange="toggleLayer('solar')"><span class="slider"></span></label>
+          </div>
+          <!-- A5 -->
+          <div class="layer-item" id="item-landcover">
+            <div class="layer-icon" style="background:rgba(34,197,94,0.12)">🗺</div>
+            <div class="layer-info">
+              <div class="layer-name">Land Cover 2015</div>
+              <div class="layer-sub">Current Land Status</div>
+              <div class="layer-api-status not-set" id="st-landcover">No API configured</div>
+            </div>
+            <label class="toggle"><input type="checkbox" id="chk-landcover" disabled onchange="toggleLayer('landcover')"><span class="slider"></span></label>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── DIMENSION B ── -->
+      <div class="dim-section" id="sec-b">
+        <div class="dim-header dim-b-header" onclick="toggleDim('sec-b','grp-b')">
+          ⚠️ Dim B — Environmental Safety
+          <span class="dim-badge" id="cnt-b">0/3</span>
+          <em class="dim-chevron">›</em>
+        </div>
+        <div class="layer-group" id="grp-b" style="max-height:1000px">
+          <!-- B1 -->
+          <div class="layer-item" id="item-flood">
+            <div class="layer-icon" style="background:rgba(245,158,11,0.12)">🌊</div>
+            <div class="layer-info">
+              <div class="layer-name">Flood Susceptibility</div>
+              <div class="layer-sub">Rain-Induced Hazard</div>
+              <div class="layer-api-status not-set" id="st-flood">No API configured</div>
+            </div>
+            <label class="toggle"><input type="checkbox" id="chk-flood" disabled onchange="toggleLayer('flood')"><span class="slider"></span></label>
+          </div>
+          <!-- B2 -->
+          <div class="layer-item" id="item-landslide">
+            <div class="layer-icon" style="background:rgba(245,158,11,0.12)">⛰</div>
+            <div class="layer-info">
+              <div class="layer-name">Landslide Susceptibility</div>
+              <div class="layer-sub">Rain-Induced Hazard</div>
+              <div class="layer-api-status not-set" id="st-landslide">No API configured</div>
+            </div>
+            <label class="toggle"><input type="checkbox" id="chk-landslide" disabled onchange="toggleLayer('landslide')"><span class="slider"></span></label>
+          </div>
+          <!-- B3 -->
+          <div class="layer-item" id="item-fault">
+            <div class="layer-icon" style="background:rgba(245,158,11,0.12)">⚡</div>
+            <div class="layer-info">
+              <div class="layer-name">Fault Line</div>
+              <div class="layer-sub">Seismic Hazard</div>
+              <div class="layer-api-status not-set" id="st-fault">No API configured</div>
+            </div>
+            <label class="toggle"><input type="checkbox" id="chk-fault" disabled onchange="toggleLayer('fault')"><span class="slider"></span></label>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── DIMENSION C ── -->
+      <div class="dim-section" id="sec-c">
+        <div class="dim-header dim-c-header" onclick="toggleDim('sec-c','grp-c')">
+          ⚖️ Dim C — Governance & De-confliction
+          <span class="dim-badge" id="cnt-c">0/6</span>
+          <em class="dim-chevron">›</em>
+        </div>
+        <div class="layer-group" id="grp-c" style="max-height:1000px">
+          <!-- C1 -->
+          <div class="layer-item" id="item-irrigation">
+            <div class="layer-icon" style="background:rgba(14,165,233,0.12)">🏗</div>
+            <div class="layer-info">
+              <div class="layer-name">Existing Irrigation Systems</div>
+              <div class="layer-sub">NIA / DA / DAR Projects</div>
+              <div class="layer-api-status not-set" id="st-irrigation">No API configured</div>
+            </div>
+            <label class="toggle"><input type="checkbox" id="chk-irrigation" disabled onchange="toggleLayer('irrigation')"><span class="slider"></span></label>
+          </div>
+          <!-- C2 -->
+          <div class="layer-item" id="item-protected">
+            <div class="layer-icon" style="background:rgba(14,165,233,0.12)">🌿</div>
+            <div class="layer-info">
+              <div class="layer-name">Protected Areas</div>
+              <div class="layer-sub">Environmental Law (NIPAS)</div>
+              <div class="layer-api-status not-set" id="st-protected">No API configured</div>
+            </div>
+            <label class="toggle"><input type="checkbox" id="chk-protected" disabled onchange="toggleLayer('protected')"><span class="slider"></span></label>
+          </div>
+          <!-- C3 -->
+          <div class="layer-item" id="item-cadt">
+            <div class="layer-icon" style="background:rgba(14,165,233,0.12)">📜</div>
+            <div class="layer-info">
+              <div class="layer-name">CADT</div>
+              <div class="layer-sub">Indigenous Peoples' Rights</div>
+              <div class="layer-api-status not-set" id="st-cadt">No API configured</div>
+            </div>
+            <label class="toggle"><input type="checkbox" id="chk-cadt" disabled onchange="toggleLayer('cadt')"><span class="slider"></span></label>
+          </div>
+          <!-- C4a -->
+          <div class="layer-item" id="item-npaaad">
+            <div class="layer-icon" style="background:rgba(14,165,233,0.12)">🌾</div>
+            <div class="layer-info">
+              <div class="layer-name">NPAAAD</div>
+              <div class="layer-sub">Agricultural Land Protection</div>
+              <div class="layer-api-status not-set" id="st-npaaad">No API configured</div>
+            </div>
+            <label class="toggle"><input type="checkbox" id="chk-npaaad" disabled onchange="toggleLayer('npaaad')"><span class="slider"></span></label>
+          </div>
+          <!-- C4b -->
+          <div class="layer-item" id="item-safdz">
+            <div class="layer-icon" style="background:rgba(14,165,233,0.12)">🗂</div>
+            <div class="layer-info">
+              <div class="layer-name">SAFDZ</div>
+              <div class="layer-sub">Strategic Agriculture & Fishery Dev. Zone</div>
+              <div class="layer-api-status not-set" id="st-safdz">No API configured</div>
+            </div>
+            <label class="toggle"><input type="checkbox" id="chk-safdz" disabled onchange="toggleLayer('safdz')"><span class="slider"></span></label>
+          </div>
+          <!-- C5 -->
+          <div class="layer-item" id="item-pia">
+            <div class="layer-icon" style="background:rgba(14,165,233,0.12)">📌</div>
+            <div class="layer-info">
+              <div class="layer-name">PIA</div>
+              <div class="layer-sub">Priority Irrigation Area</div>
+              <div class="layer-api-status not-set" id="st-pia">No API configured</div>
+            </div>
+            <label class="toggle"><input type="checkbox" id="chk-pia" disabled onchange="toggleLayer('pia')"><span class="slider"></span></label>
+          </div>
+          <!-- C6 -->
+          <div class="layer-item" id="item-slope">
+            <div class="layer-icon" style="background:rgba(14,165,233,0.12)">📐</div>
+            <div class="layer-info">
+              <div class="layer-name">Slope 0–8°</div>
+              <div class="layer-sub">Terrain Suitability</div>
+              <div class="layer-api-status not-set" id="st-slope">No API configured</div>
+            </div>
+            <label class="toggle"><input type="checkbox" id="chk-slope" disabled onchange="toggleLayer('slope')"><span class="slider"></span></label>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /sidebar-scroll -->
+
+    <!-- KML Files list -->
+    <div class="kml-section" id="kmlSection">
+      <div class="kml-section-title">📄 Uploaded KML Files</div>
+      <div id="kmlList"></div>
+    </div>
+
+    <!-- Drawn Polygons list -->
+    <div class="poly-section" id="polySection">
+      <div class="kml-section-title">⬡ Drawn Polygons</div>
+      <div id="polyList"></div>
+      <button class="btn btn-ghost" style="width:100%;margin-top:6px;font-size:11px" onclick="downloadKML()">⬇ Export All as KML</button>
+    </div>
+
+    <!-- Upload Area -->
+    <div class="sidebar-footer">
+      <div class="sidebar-footer-title">Upload KML to Validate</div>
+      <div class="upload-area" id="dropZone"
+           onclick="document.getElementById('kmlInput').click()"
+           ondragover="doDragOver(event)" ondrop="doDrop(event)" ondragleave="doDragLeave()">
+        <div class="upload-icon">📁</div>
+        <p>Drop <strong>.kml</strong> files here<br>or click to browse</p>
+      </div>
+    </div>
+  </div><!-- /sidebar -->
+
+  <!-- MAP -->
+  <div id="map">
+    <div class="draw-indicator" id="drawIndicator">✏ Click to add vertices · Double-click to finish · Esc to cancel</div>
+
+    <div class="map-toolbar">
+      <button class="tool-btn" title="Zoom In"  onclick="map.zoomIn()">+</button>
+      <button class="tool-btn" title="Zoom Out" onclick="map.zoomOut()">−</button>
+      <button class="tool-btn" title="Philippines extent" onclick="flyPH()" style="font-size:13px">🇵🇭</button>
+      <button class="tool-btn" title="Full extent" onclick="map.fitBounds([[116,4],[128,21]],{padding:30})">⊞</button>
+      <button class="tool-btn" id="drawTbtn" title="Draw Polygon" onclick="toggleDraw()">✏</button>
+      <button class="tool-btn" id="satBtn" title="Toggle Satellite" onclick="toggleBasemap()">🛰</button>
+    </div>
+
+    <div class="status-bar">
+      <span><span class="status-dot"></span>Map Ready</span>
+      <span class="coord-display" id="coordEl">Lng — · Lat —</span>
+      <span id="activeCountEl">0 layers active</span>
+    </div>
+
+    <div class="legend-panel" id="legendPanel">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <h4 style="margin:0">Active Layers</h4>
+      </div>
+      <div id="legendItems"></div>
+    </div>
+  </div>
+
+</div><!-- /main -->
+
+<!-- REPORT MODAL -->
+<div class="modal-overlay" id="reportModal" onclick="if(event.target===this)this.classList.remove('show')">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">📋 Map Assessment Report</div>
+      <button class="modal-close" onclick="document.getElementById('reportModal').classList.remove('show')">✕</button>
+    </div>
+    <div class="modal-body" id="reportBody"></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="document.getElementById('reportModal').classList.remove('show')">Close</button>
+      <button class="btn btn-primary" onclick="window.print()">🖨 Print / Export PDF</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast-container" id="toastContainer"></div>
+
+<script>
+/* ============================================================
+ *
+ *  IGP — Integrated Geospatial Platform | NIA
+ *  Mapbox GL JS · Philippines
+ *
+ * ============================================================ */
+
+/* ╔═══════════════════════════════════════════════════════════════════╗
+ * ║  STEP 1 — MAPBOX ACCESS TOKEN                                    ║
+ * ║                                                                   ║
+ * ║  Paste your Mapbox public token (starts with pk.eyJ1...)         ║
+ * ║  Get yours at: https://account.mapbox.com/access-tokens/         ║
+ * ╚═══════════════════════════════════════════════════════════════════╝ */
+
+// ▼▼▼  EDIT: Replace the empty string with your Mapbox token  ▼▼▼
+const MAPBOX_TOKEN = 'pk.eyJ1IjoibWFya3VseW8iLCJhIjoiY21obGN3bzAyMWFlZDJrb3F6dDh4b29yaCJ9.DonMQxYB1xfSOvhnr-6X8A';
+// ▲▲▲  ───────────────────────────────────────────────────────  ▲▲▲
+
+
+/* ╔═══════════════════════════════════════════════════════════════════╗
+ * ║  STEP 2 — MAP STYLE AND DEFAULT VIEW                             ║
+ * ╚═══════════════════════════════════════════════════════════════════╝ */
+
+// ▼▼▼  EDIT: Choose your default basemap style  ▼▼▼
+//   'mapbox://styles/mapbox/dark-v11'
+//   'mapbox://styles/mapbox/satellite-streets-v12'
+//   'mapbox://styles/mapbox/streets-v12'
+//   'mapbox://styles/mapbox/light-v11'
+//   'mapbox://styles/mapbox/outdoors-v12'
+const DEFAULT_STYLE = 'mapbox://styles/mapbox/dark-v11';
+// ▲▲▲  ────────────────────────────────────────  ▲▲▲
+
+// ▼▼▼  EDIT: Default map center [longitude, latitude] and zoom  ▼▼▼
+const DEFAULT_CENTER = [122.0, 12.0];   // center of the Philippines
+const DEFAULT_ZOOM   = 5.5;             // 1 = world, 18 = building level
+// ▲▲▲  ────────────────────────────────────────────────────────  ▲▲▲
+
+
+/* ╔═══════════════════════════════════════════════════════════════════╗
+ * ║  STEP 3 — LAYER API CONFIGURATION                                ║
+ * ║                                                                   ║
+ * ║  For each layer, fill in:                                        ║
+ * ║                                                                   ║
+ * ║    tilesetId   →  Your Mapbox Tileset ID                         ║
+ * ║                   Format: "username.tilesetid"                   ║
+ * ║                   Find in Mapbox Studio → Tilesets tab           ║
+ * ║                   Loaded as: mapbox://username.tilesetid         ║
+ * ║                                                                   ║
+ * ║    sourceLayer →  Layer name INSIDE the tileset                  ║
+ * ║                   Find in Studio's tileset inspector panel        ║
+ * ║                                                                   ║
+ * ║  Leave tilesetId as '' to disable a layer (toggle stays gray).   ║
+ * ╚═══════════════════════════════════════════════════════════════════╝ */
+
+const LAYER_CONFIG = {
+
+  /* ──────────────────────────────────────────────────────────────────
+   * DIMENSION A — TECHNICAL SUITABILITY (Agro-Climatic Potential)
+   * ────────────────────────────────────────────────────────────────── */
+
+  groundwater: {
+    // A1 — Groundwater Map (Water Source)
+    // ▼▼▼  EDIT: Paste your Mapbox Tileset ID and Source Layer below  ▼▼▼
+    tilesetId:   'markulyo.ngk2cwiyb64v',    // ← A1 Groundwater Map
+    sourceLayer: '',      // ← confirmed source-layer name
+    // ▲▲▲  ───────────────────────────────────────────────────────────  ▲▲▲
+    color:    '#22c55e',
+    type:     'fill',   // 'fill' for polygons, 'line' for linear features
+    opacity:  0.35,
+  },
+
+  climate: {
+    // A2 — Climate Type (Water Availability)
+    // ▼▼▼  EDIT  ▼▼▼
+    tilesetId:   '',    // ← PASTE: A2 Climate Type tileset ID
+    sourceLayer: '',    // ← PASTE: source layer name
+    // ▲▲▲  ─────  ▲▲▲
+    color:    '#4ade80',
+    type:     'fill',
+    opacity:  0.30,
+  },
+
+  soil: {
+    // A3 — Soil Suitability & Soil Classification/Type (Agro-potential)
+    // ▼▼▼  EDIT  ▼▼▼
+    tilesetId:   'markulyo.4zd49fenzhh9',    // ← PASTE: A3 Soil Suitability tileset ID
+    sourceLayer: '',    // ← PASTE: source layer name
+    // ▲▲▲  ─────  ▲▲▲
+    color:    '#a3e635',
+    type:     'fill',
+    opacity:  0.30,
+  },
+
+  solar: {
+    // A4 — Suitability of Solar Powered Irrigation System (Energy Potential)
+    // ▼▼▼  EDIT  ▼▼▼
+    tilesetId:   '',    // ← PASTE: A4 Solar Irrigation (SPIS) tileset ID
+    sourceLayer: '',    // ← PASTE: source layer name
+    // ▲▲▲  ─────  ▲▲▲
+    color:    '#fbbf24',
+    type:     'fill',
+    opacity:  0.30,
+  },
+
+  landcover: {
+    // A5 — Land Cover 2015 (Current Land Status)
+    // ▼▼▼  EDIT  ▼▼▼
+    tilesetId:   '',    // ← PASTE: A5 Land Cover 2015 tileset ID
+    sourceLayer: '',    // ← PASTE: source layer name
+    // ▲▲▲  ─────  ▲▲▲
+    color:    '#86efac',
+    type:     'fill',
+    opacity:  0.28,
+  },
+
+  /* ──────────────────────────────────────────────────────────────────
+   * DIMENSION B — ENVIRONMENTAL SAFETY (Hazard Avoidance)
+   * ────────────────────────────────────────────────────────────────── */
+
+  flood: {
+    // B1 — Rain-Induced Flood Susceptibility
+    // ▼▼▼  EDIT  ▼▼▼
+    tilesetId:   '',    // ← PASTE: B1 Flood Susceptibility tileset ID
+    sourceLayer: '',    // ← PASTE: source layer name
+    // ▲▲▲  ─────  ▲▲▲
+    color:    '#3b82f6',
+    type:     'fill',
+    opacity:  0.38,
+  },
+
+  landslide: {
+    // B2 — Rain-Induced Landslide Susceptibility
+    // ▼▼▼  EDIT  ▼▼▼
+    tilesetId:   '',    // ← PASTE: B2 Landslide Susceptibility tileset ID
+    sourceLayer: '',    // ← PASTE: source layer name
+    // ▲▲▲  ─────  ▲▲▲
+    color:    '#f59e0b',
+    type:     'fill',
+    opacity:  0.38,
+  },
+
+  fault: {
+    // B3 — Fault Line (Seismic Hazard) — rendered as a LINE, not polygon
+    // ▼▼▼  EDIT  ▼▼▼
+    tilesetId:   '',    // ← PASTE: B3 Fault Line tileset ID
+    sourceLayer: '',    // ← PASTE: source layer name
+    // ▲▲▲  ─────  ▲▲▲
+    color:    '#ef4444',
+    type:     'line',   // ← keep as 'line' — fault lines are linear features
+    opacity:  0.90,
+  },
+
+  /* ──────────────────────────────────────────────────────────────────
+   * DIMENSION C — GOVERNANCE & DE-CONFLICTION (Legal & Efficiency)
+   * ────────────────────────────────────────────────────────────────── */
+
+  irrigation: {
+    // C1 — Existing Irrigation Systems (NIA & OGAs)
+    //      Includes: NIS/CIS (NIA), STW/SWIP (DA), DAR Projects
+    // ▼▼▼  EDIT  ▼▼▼
+    tilesetId:   '',    // ← PASTE: C1 Existing Irrigation Systems tileset ID
+    sourceLayer: '',    // ← PASTE: source layer name
+    // ▲▲▲  ─────  ▲▲▲
+    color:    '#0ea5e9',
+    type:     'fill',
+    opacity:  0.30,
+  },
+
+  protected: {
+    // C2 — Protected Areas (Environmental Law — NIPAS Act)
+    // ▼▼▼  EDIT  ▼▼▼
+    tilesetId:   '',    // ← PASTE: C2 Protected Areas tileset ID
+    sourceLayer: '',    // ← PASTE: source layer name
+    // ▲▲▲  ─────  ▲▲▲
+    color:    '#8b5cf6',
+    type:     'fill',
+    opacity:  0.32,
+  },
+
+  cadt: {
+    // C3 — CADT (Certificate of Ancestral Domain Title — Indigenous Peoples' Rights)
+    // ▼▼▼  EDIT  ▼▼▼
+    tilesetId:   '',    // ← PASTE: C3 CADT tileset ID
+    sourceLayer: '',    // ← PASTE: source layer name
+    // ▲▲▲  ─────  ▲▲▲
+    color:    '#ec4899',
+    type:     'fill',
+    opacity:  0.28,
+  },
+
+  npaaad: {
+    // C4a — NPAAAD (National Protected Areas for Agricultural & Agro-industrial Development)
+    // ▼▼▼  EDIT  ▼▼▼
+    tilesetId:   '',    // ← PASTE: C4a NPAAAD tileset ID
+    sourceLayer: '',    // ← PASTE: source layer name
+    // ▲▲▲  ─────  ▲▲▲
+    color:    '#14b8a6',
+    type:     'fill',
+    opacity:  0.28,
+  },
+
+  safdz: {
+    // C4b — SAFDZ (Strategic Agriculture and Fishery Development Zone)
+    // ▼▼▼  EDIT  ▼▼▼
+    tilesetId:   'markulyo.ye3ftxbv62l7',    // ← PASTE: C4b SAFDZ tileset ID
+    sourceLayer: '',    // ← PASTE: source layer name
+    // ▲▲▲  ─────  ▲▲▲
+    color:    '#06b6d4',
+    type:     'fill',
+    opacity:  0.28,
+  },
+
+  pia: {
+    // C5 — PIA (Priority Irrigation Area)
+    // ▼▼▼  EDIT  ▼▼▼
+    tilesetId:   '',    // ← PASTE: C5 PIA tileset ID
+    sourceLayer: '',    // ← PASTE: source layer name
+    // ▲▲▲  ─────  ▲▲▲
+    color:    '#6366f1',
+    type:     'fill',
+    opacity:  0.28,
+  },
+
+  slope: {
+    // C6 — Slope 0–8° (Terrain Suitability for irrigation)
+    // ▼▼▼  EDIT  ▼▼▼
+    tilesetId:   '',    // ← PASTE: C6 Slope 0–8° tileset ID
+    sourceLayer: '',    // ← PASTE: source layer name
+    // ▲▲▲  ─────  ▲▲▲
+    color:    '#f97316',
+    type:     'fill',
+    opacity:  0.25,
+  },
+
+}; // ← end of LAYER_CONFIG — do not remove this line
+
+
+/* ╔═══════════════════════════════════════════════════════════════════╗
+ * ║  LAYER METADATA — names, icons, dimensions shown in the sidebar  ║
+ * ║  You generally do NOT need to edit this section.                 ║
+ * ╚═══════════════════════════════════════════════════════════════════╝ */
+const LAYER_META = {
+  groundwater: { name:'Groundwater Map',           sub:'Water Source',                dim:'A', icon:'💧' },
+  climate:     { name:'Climate Type',              sub:'Water Availability',          dim:'A', icon:'🌤' },
+  soil:        { name:'Soil Suitability',          sub:'Agro-potential / Type',       dim:'A', icon:'🌍' },
+  solar:       { name:'Solar Irrigation (SPIS)',   sub:'Energy Potential',            dim:'A', icon:'☀️' },
+  landcover:   { name:'Land Cover 2015',           sub:'Current Land Status',         dim:'A', icon:'🗺' },
+  flood:       { name:'Flood Susceptibility',      sub:'Rain-Induced Hazard',         dim:'B', icon:'🌊' },
+  landslide:   { name:'Landslide Susceptibility',  sub:'Rain-Induced Hazard',         dim:'B', icon:'⛰' },
+  fault:       { name:'Fault Line',                sub:'Seismic Hazard',              dim:'B', icon:'⚡' },
+  irrigation:  { name:'Existing Irrigation',       sub:'NIA / DA / DAR Projects',     dim:'C', icon:'🏗' },
+  protected:   { name:'Protected Areas',           sub:'Environmental Law (NIPAS)',   dim:'C', icon:'🌿' },
+  cadt:        { name:'CADT',                      sub:"Indigenous Peoples' Rights",  dim:'C', icon:'📜' },
+  npaaad:      { name:'NPAAAD',                      sub:'Agricultural Land Protection',   dim:'C', icon:'🌾' },
+  safdz:       { name:'SAFDZ',                       sub:'Strategic Agri & Fishery Dev. Zone', dim:'C', icon:'🗂' },
+  pia:         { name:'PIA',                       sub:'Priority Irrigation Area',    dim:'C', icon:'📌' },
+  slope:       { name:'Slope 0–8°',               sub:'Terrain Suitability',         dim:'C', icon:'📐' },
+};
+
+/* ─────────────────────────────────────────────────────────────
+ *  RUNTIME STATE  — do not edit below this line
+ * ───────────────────────────────────────────────────────────── */
+
+// Initialise runtime state from LAYER_CONFIG
+const STATE = {};
+Object.keys(LAYER_CONFIG).forEach(id => {
+  STATE[id] = {
+    tilesetId:   LAYER_CONFIG[id].tilesetId,
+    sourceLayer: LAYER_CONFIG[id].sourceLayer,
+    visible:     false,
+    loaded:      false,
+    error:       null,
+    opacity:     LAYER_CONFIG[id].opacity,
+  };
+});
+
+const LAYER_IDS = Object.keys(LAYER_CONFIG);
+
+/* ═══════════════════════════════════════════════════════════════
+ *  MAP INITIALISATION
+ * ═══════════════════════════════════════════════════════════════ */
+mapboxgl.accessToken = MAPBOX_TOKEN;
+
+const map = new mapboxgl.Map({
+  container: 'map',
+  style:     DEFAULT_STYLE,
+  center:    DEFAULT_CENTER,
+  zoom:      DEFAULT_ZOOM,
+  attributionControl: false,
+});
+
+let mapReady   = false;
+let basemapSat = false;
+
+map.on('mousemove', e => {
+  document.getElementById('coordEl').textContent =
+    `Lng ${e.lngLat.lng.toFixed(5)} · Lat ${e.lngLat.lat.toFixed(5)}`;
+});
+
+map.on('load', () => {
+  mapReady = true;
+
+  // Enable toggle buttons for any layers that already have a tilesetId set
+  LAYER_IDS.forEach(id => {
+    if (STATE[id].tilesetId) {
+      document.getElementById('chk-' + id).disabled = false;
+      setStatus(id, 'configured', '✓ Configured — toggle to load');
+    }
+  });
+
+  toast('Map loaded! Toggle layers from the sidebar.', 'ok');
+});
+
+map.on('error', e => {
+  const status = e?.error?.status;
+  const msg    = e?.error?.message || '';
+  if (status === 401) {
+    toast('Mapbox token invalid (401). Update MAPBOX_TOKEN in the script.', 'err');
+  } else if (status === 403) {
+    toast('Access denied (403) — check tileset permissions or token scope.', 'warn');
+  } else if (status === 404) {
+    // A tileset was not found — find which layer and report it
+    const url = e?.error?.url || '';
+    const badId = LAYER_IDS.find(id => url.includes(STATE[id].tilesetId));
+    if (badId) {
+      setStatus(badId, 'error', '✗ Tileset not found (404) — check tilesetId');
+      toast(LAYER_META[badId].name + ': tileset not found. Check the tilesetId in LAYER_CONFIG.', 'err');
+    }
+  } else if (msg && !msg.includes('abort')) {
+    // Surface unexpected errors to help debugging
+    console.warn('[IGP map error]', e);
+  }
+});
+
+/* ═══════════════════════════════════════════════════════════════
+ *  BASEMAP TOGGLE
+ * ═══════════════════════════════════════════════════════════════ */
+function toggleBasemap() {
+  if (!mapReady) return;
+  basemapSat = !basemapSat;
+  // ▼▼▼  EDIT: Change the satellite style URL here if needed  ▼▼▼
+  map.setStyle(basemapSat
+    ? 'mapbox://styles/mapbox/satellite-streets-v12'
+    : DEFAULT_STYLE);
+  // ▲▲▲  ─────────────────────────────────────────────────────  ▲▲▲
+  map.once('style.load', () => {
+    // Re-add all visible layers after style switch
+    LAYER_IDS.forEach(id => { if (STATE[id].visible) addMapLayer(id); });
+  });
+  document.getElementById('satBtn').classList.toggle('active', basemapSat);
+}
+
+function flyPH() { map.flyTo({ center: DEFAULT_CENTER, zoom: DEFAULT_ZOOM, duration: 1200 }); }
+
+/* ═══════════════════════════════════════════════════════════════
+ *  LAYER TOGGLE — called by each checkbox
+ * ═══════════════════════════════════════════════════════════════ */
+function toggleLayer(id) {
+  if (!mapReady) {
+    toast('Map is still loading, please wait…', 'warn');
+    document.getElementById('chk-' + id).checked = false;
+    return;
+  }
+  const s = STATE[id];
+
+  if (s.visible) {
+    // ── Turn OFF ──────────────────────────────────────────────────────────
+    removeMapLayer(id);
+    s.visible = false;
+    s.loaded  = false;
+    setStatus(id, 'configured', '✓ Configured — toggle to load');
+    toast(LAYER_META[id].name + ' hidden', 'info');
+  } else {
+    // ── Turn ON ───────────────────────────────────────────────────────────
+    if (!s.tilesetId) {
+      document.getElementById('chk-' + id).checked = false;
+      toast('Set tilesetId for "' + LAYER_META[id].name + '" in LAYER_CONFIG', 'warn');
+      return;
+    }
+    s.visible = true;
+    s.loaded  = false;
+    setStatus(id, 'loading', '⟳ Loading from Mapbox…');
+    addMapLayer(id);
+    toast('Loading ' + LAYER_META[id].name + '…', 'info');
+  }
+
+  syncItemUI(id);
+  updateStatus();
+  updateLegend();
+  updateDimCounts();
+}
+
+/* ═══════════════════════════════════════════════════════════════
+ *  ADD LAYER VIA MAPBOX VECTOR TILES API
+ *
+ *  Strategy: fetch TileJSON metadata first to discover the REAL
+ *  source-layer name(s) inside the tileset, then add the map layers.
+ *  This avoids the "wrong source-layer name" problem entirely.
+ * ═══════════════════════════════════════════════════════════════ */
+function addMapLayer(id) {
+  const s     = STATE[id];
+  const cfg   = LAYER_CONFIG[id];
+  const srcId = 'src-' + id;
+
+  // Clean up any stale layers/sources first
+  removeMapLayer(id, false);
+
+  /* ── Step 1: If sourceLayer is already known, skip TileJSON fetch ─────────
+   * If LAYER_CONFIG has a sourceLayer set (or we already discovered it),
+   * we call renderLayer() directly. Otherwise we fetch TileJSON to find it.
+   * ────────────────────────────────────────────────────────────────────── */
+
+  // Use already-known sourceLayer if available — go straight to render
+  const knownSrcLayer = (s.sourceLayer || '').trim();
+  if (knownSrcLayer) {
+    renderLayer(id, srcId, cfg, s, knownSrcLayer);
+    return;
+  }
+
+  const metaUrl = `https://api.mapbox.com/v4/${s.tilesetId}.json?access_token=${mapboxgl.accessToken}`;
+
+  fetch(metaUrl)
+    .then(res => {
+      if (!res.ok) throw new Error(`TileJSON fetch failed (${res.status})`);
+      return res.json();
+    })
+    .then(meta => {
+      // Discover the real source-layer name from TileJSON
+      const vectorLayers = meta.vector_layers || [];
+      let srcLayer;
+      if (vectorLayers.length > 0) {
+        srcLayer = vectorLayers[0].id;
+        console.log('[IGP] ' + id + ': discovered source-layer = "' + srcLayer + '"');
+        console.log('[IGP] ' + id + ': all layers in tileset:', vectorLayers.map(l => l.id));
+      } else {
+        const dotIdx = s.tilesetId.indexOf('.');
+        srcLayer = dotIdx !== -1 ? s.tilesetId.slice(dotIdx + 1) : id;
+      }
+      // Cache it so next toggle skips the fetch
+      STATE[id].sourceLayer = srcLayer;
+      renderLayer(id, srcId, cfg, s, srcLayer, meta.bounds);
+    })
+    .catch(err => {
+      STATE[id].visible = false;
+      STATE[id].error   = err.message;
+      document.getElementById('chk-' + id).checked = false;
+      setStatus(id, 'error', '✗ ' + err.message);
+      toast(LAYER_META[id].name + ' failed: ' + err.message, 'err');
+      syncItemUI(id);
+    });
+}
+
+/* ── renderLayer: shared rendering used by both paths ─────────────────────── */
+function renderLayer(id, srcId, cfg, s, srcLayer, bounds) {
+  removeMapLayer(id, false);
+
+  map.addSource(srcId, {
+    type: 'vector',
+    url:  'mapbox://' + s.tilesetId,
+  });
+
+  try {
+    if (cfg.type === 'line') {
+      map.addLayer({
+        id:             'lyr-' + id,
+        type:           'line',
+        source:         srcId,
+        'source-layer': srcLayer,
+        paint: {
+          'line-color':   cfg.color,
+          'line-width':   ['interpolate', ['linear'], ['zoom'], 4, 1.5, 12, 3.5],
+          'line-opacity': s.opacity,
+        },
+      });
+    } else {
+      map.addLayer({
+        id:             'lyr-' + id + '-fill',
+        type:           'fill',
+        source:         srcId,
+        'source-layer': srcLayer,
+        paint: {
+          'fill-color':   cfg.color,
+          'fill-opacity': ['interpolate', ['linear'], ['zoom'],
+            4,  s.opacity * 0.45,
+            12, s.opacity * 0.85,
+          ],
+        },
+      });
+      map.addLayer({
+        id:             'lyr-' + id + '-stroke',
+        type:           'line',
+        source:         srcId,
+        'source-layer': srcLayer,
+        paint: {
+          'line-color':   cfg.color,
+          'line-width':   ['interpolate', ['linear'], ['zoom'], 4, 0.5, 12, 2],
+          'line-opacity': Math.min(s.opacity + 0.25, 1),
+        },
+      });
+
+      map.on('click', 'lyr-' + id + '-fill', e => {
+        if (!e.features.length) return;
+        const props = e.features[0].properties;
+        const rows  = Object.entries(props).slice(0, 12)
+          .map(([k,v]) => `<div style="padding:2px 0;border-bottom:1px solid rgba(255,255,255,0.06)"><span style="color:var(--muted)">${k}:</span> <strong>${v}</strong></div>`)
+          .join('') || '<em style="color:var(--muted)">No attributes</em>';
+        new mapboxgl.Popup({ maxWidth:'270px', closeButton:true })
+          .setLngLat(e.lngLat)
+          .setHTML(`<div style="font-size:11px">
+            <div style="font-weight:700;color:${cfg.color};margin-bottom:6px">${LAYER_META[id].icon} ${LAYER_META[id].name}</div>
+            ${rows}
+          </div>`)
+          .addTo(map);
+      });
+      map.on('mouseenter', 'lyr-' + id + '-fill', () => { if (!drawMode) map.getCanvas().style.cursor = 'pointer'; });
+      map.on('mouseleave', 'lyr-' + id + '-fill', () => { if (!drawMode) map.getCanvas().style.cursor = ''; });
+    }
+
+    STATE[id].loaded = true;
+    STATE[id].error  = null;
+    setStatus(id, 'configured', '✓ Loaded — "' + srcLayer + '"');
+    toast(LAYER_META[id].name + ' loaded!', 'ok');
+
+    // Color coding fires via the global map.on('idle') handler — no extra call needed.
+
+    // Fly to layer bounds if inside Philippines
+    if (bounds && Array.isArray(bounds) && bounds.length === 4) {
+      const [w, sb, e2, n] = bounds;
+      if (e2 > 116 && w < 128 && n > 4 && sb < 22) {
+        map.fitBounds([[w, sb], [e2, n]], { padding: 60, maxZoom: 12, duration: 800 });
+      }
+    }
+
+  } catch(err) {
+    STATE[id].visible = false;
+    STATE[id].error   = err.message;
+    document.getElementById('chk-' + id).checked = false;
+    setStatus(id, 'error', '✗ ' + err.message);
+    toast(LAYER_META[id].name + ' error: ' + err.message, 'err');
+    syncItemUI(id);
+  }
+}
+function removeMapLayer(id, resetVisible = true) {
+  ['lyr-' + id, 'lyr-' + id + '-fill', 'lyr-' + id + '-stroke'].forEach(lid => {
+    if (map.getLayer(lid)) map.removeLayer(lid);
+  });
+  if (map.getSource('src-' + id)) map.removeSource('src-' + id);
+  if (resetVisible) {
+    STATE[id].visible = false;
+    delete LAYER_COLOR_STATE[id]; // clear so it re-detects on next load
+  }
+}
+
+function clearAllLayers() {
+  LAYER_IDS.forEach(id => {
+    removeMapLayer(id);
+    document.getElementById('chk-' + id).checked = false;
+    document.getElementById('item-' + id).classList.remove('active');
+    setStatus(id, STATE[id].tilesetId ? 'configured' : 'not-set',
+              STATE[id].tilesetId ? '✓ Configured — toggle to load' : 'No API configured');
+  });
+  updateStatus(); updateLegend(); updateDimCounts();
+  toast('All layers cleared', 'info');
+}
+
+function setLayerOpacity(id, val) {
+  STATE[id].opacity = val;
+  const cfg = LAYER_CONFIG[id];
+  if (map.getLayer('lyr-' + id + '-fill'))   map.setPaintProperty('lyr-' + id + '-fill',   'fill-opacity', val * 0.75);
+  if (map.getLayer('lyr-' + id + '-stroke')) map.setPaintProperty('lyr-' + id + '-stroke', 'line-opacity', Math.min(val + 0.2, 1));
+  if (map.getLayer('lyr-' + id))             map.setPaintProperty('lyr-' + id,             'line-opacity', val);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+ *  UI HELPERS
+ * ═══════════════════════════════════════════════════════════════ */
+function setStatus(id, cls, msg) {
+  const el = document.getElementById('st-' + id);
+  if (el) { el.className = 'layer-api-status ' + cls; el.textContent = msg; }
+}
+
+function syncItemUI(id) {
+  const s   = STATE[id];
+  const chk = document.getElementById('chk-' + id);
+  const itm = document.getElementById('item-' + id);
+  if (chk) chk.checked = s.visible;
+  if (itm) itm.classList.toggle('active', s.visible);
+}
+
+function updateStatus() {
+  const n = LAYER_IDS.filter(id => STATE[id].visible).length;
+  document.getElementById('activeCountEl').textContent = n + ' layer' + (n !== 1 ? 's' : '') + ' active';
+}
+
+/* ═══════════════════════════════════════════════════════════════
+ *  ATTRIBUTE-BASED COLOR CODING
+ *
+ *  Single approach that works for ALL layers:
+ *  - Fetch TileJSON → get field names from vector_layers[].fields
+ *  - Fetch one sample tile → get actual feature values
+ *  - Build color map → apply Mapbox match expression
+ *  - Re-sample on map idle to collect more values as user pans
+ * ═══════════════════════════════════════════════════════════════ */
+
+const ATTR_PALETTE = [
+  '#e74c3c','#3498db','#2ecc71','#f39c12','#9b59b6',
+  '#1abc9c','#e67e22','#2c3e50','#e91e63','#00bcd4',
+  '#8bc34a','#ff5722','#607d8b','#673ab7','#ffc107',
+  '#009688','#c0392b','#2980b9','#27ae60','#d35400'
+];
+
+const LAYER_COLOR_STATE = {};
+
+const SKIP_FIELD_RE = /^(id|fid|gid|objectid|shape_|area|perimeter|length|lat|lon|lng|x_|y_|geom|wkt|created|updated|uuid|globalid)/i;
+
+function buildColorMap(valuesSet) {
+  const sorted = [...valuesSet].sort();
+  const out = {};
+  sorted.forEach((v, i) => { out[v] = ATTR_PALETTE[i % ATTR_PALETTE.length]; });
+  return out;
+}
+
+function applyColorCoding(id, field) {
+  const cs = LAYER_COLOR_STATE[id];
+  if (!cs) return;
+  cs.field = field;
+
+  const colorMap = cs.valueMap[field];
+  if (!colorMap || Object.keys(colorMap).length === 0) {
+    updateLegend();
+    return;
+  }
+
+  const matchExpr = ['match', ['get', field]];
+  Object.entries(colorMap).forEach(([v, c]) => matchExpr.push(v, c));
+  matchExpr.push(LAYER_CONFIG[id].color);
+
+  const opacity = STATE[id].opacity;
+
+  // polygon fill layer
+  if (map.getLayer('lyr-' + id + '-fill')) {
+    map.setPaintProperty('lyr-' + id + '-fill', 'fill-color', matchExpr);
+    map.setPaintProperty('lyr-' + id + '-fill', 'fill-opacity',
+      ['interpolate', ['linear'], ['zoom'], 4, opacity * 0.55, 12, opacity * 0.85]);
+  }
+  // polygon stroke / line layer
+  if (map.getLayer('lyr-' + id + '-stroke')) {
+    map.setPaintProperty('lyr-' + id + '-stroke', 'line-color', matchExpr);
+  }
+  // pure line layer (e.g. fault)
+  if (map.getLayer('lyr-' + id)) {
+    map.setPaintProperty('lyr-' + id, 'line-color', matchExpr);
+  }
+
+  updateLegend();
+}
+
+/* ── Main entry: called after a layer is rendered ────────────────────────────
+ * Fetches TileJSON for field names, then samples rendered features for values.
+ * On subsequent calls (map pan/zoom) only samples rendered features.
+ */
+function colorCodeLayer(id) {
+  const s = STATE[id];
+  if (!s || !s.visible || !s.tilesetId) return;
+
+  const cs = LAYER_COLOR_STATE[id];
+
+  // ── If we already have fields, just sample rendered features ────────────
+  if (cs && cs.fields && cs.fields.length > 0) {
+    _sampleRendered(id);
+    return;
+  }
+
+  // ── First time: fetch TileJSON to get field names ────────────────────────
+  fetch(`https://api.mapbox.com/v4/${s.tilesetId}.json?access_token=${mapboxgl.accessToken}`)
+    .then(r => r.ok ? r.json() : null)
+    .then(meta => {
+      if (!meta) return;
+
+      const srcLayerName = s.sourceLayer || (STATE[id].sourceLayer) || '';
+      const vl = (meta.vector_layers || []).find(l => l.id === srcLayerName)
+              || (meta.vector_layers || [])[0];
+
+      if (!vl || !vl.fields) return;
+
+      // Filter to categorical (non-numeric, non-id) fields only
+      const fields = Object.keys(vl.fields).filter(f => {
+        if (SKIP_FIELD_RE.test(f)) return false;
+        if (vl.fields[f] === 'Number') return false;
+        return true;
+      });
+
+      if (fields.length === 0) return;
+
+      // Initialise color state
+      const valueSets = {};
+      fields.forEach(f => { valueSets[f] = new Set(); });
+
+      LAYER_COLOR_STATE[id] = {
+        field:    fields[0],
+        fields,
+        fieldTypes: vl.fields,
+        valueSets,
+        valueMap: {},
+      };
+
+      updateLegend(); // show dropdown immediately
+
+      // Now sample whatever features are already on screen
+      _sampleRendered(id);
+    })
+    .catch(() => {
+      // TileJSON failed — fall back to sampling only
+      _sampleRendered(id);
+    });
+}
+
+function _sampleRendered(id) {
+  const cs = LAYER_COLOR_STATE[id];
+  if (!cs) return;
+
+  // Query both fill and line layer types
+  const layerIds = ['lyr-' + id + '-fill', 'lyr-' + id]
+    .filter(lid => map.getLayer(lid));
+  if (layerIds.length === 0) return;
+
+  const features = map.queryRenderedFeatures({ layers: layerIds });
+  if (!features || features.length === 0) return;
+
+  let changed = false;
+  features.forEach(feat => {
+    const props = feat.properties || {};
+    cs.fields.forEach(f => {
+      const v = props[f];
+      if (v !== null && v !== undefined) {
+        const str = String(v).trim();
+        if (str && str.length < 80 && !cs.valueSets[f].has(str)) {
+          cs.valueSets[f].add(str);
+          changed = true;
+        }
+      }
+    });
+  });
+
+  if (!changed) return;
+
+  // Rebuild color maps
+  cs.fields.forEach(f => {
+    if (cs.valueSets[f].size > 0) {
+      cs.valueMap[f] = buildColorMap(cs.valueSets[f]);
+    }
+  });
+
+  // Auto-pick best field (most distinct categorical values, 2–20)
+  let bestField = cs.field;
+  let bestScore = 0;
+  cs.fields.forEach(f => {
+    const n = cs.valueSets[f].size;
+    if (n >= 2 && n <= 20 && n > bestScore) { bestField = f; bestScore = n; }
+  });
+  // Only auto-switch field on very first sample batch
+  if (!cs._userPicked) cs.field = bestField;
+
+  applyColorCoding(id, cs.field);
+}
+
+// Re-sample all visible layers whenever the map goes idle (after pan/zoom/load)
+map.on('idle', () => {
+  LAYER_IDS.forEach(id => {
+    if (STATE[id].visible) colorCodeLayer(id);
+  });
+});
+
+function updateLegend() {
+  const active = LAYER_IDS.filter(id => STATE[id].visible);
+  const panel  = document.getElementById('legendPanel');
+  panel.style.display = active.length ? 'block' : 'none';
+
+  document.getElementById('legendItems').innerHTML = active.map(id => {
+    const cs  = LAYER_COLOR_STATE[id];
+    const cfg = LAYER_CONFIG[id];
+    const meta = LAYER_META[id];
+
+    if (!cs || !cs.field) {
+      // TileJSON not yet fetched — show plain color swatch
+      return `<div class="legend-layer-block">
+        <div class="legend-layer-title">
+          <span style="background:${cfg.color};width:10px;height:10px;border-radius:2px;display:inline-block;flex-shrink:0"></span>
+          ${meta.name}
+        </div>
+        <div style="font-size:9px;color:var(--muted);font-style:italic">Pan map to load values…</div>
+      </div>`;
+    }
+
+    // Has field names but no values yet — show dropdown with "loading" hint
+    const hasValues = cs.valueMap[cs.field] && Object.keys(cs.valueMap[cs.field]).length > 0;
+    if (!hasValues) {
+      const fieldOptions = cs.fields.map(f =>
+        `<option value="${f}" ${f === cs.field ? 'selected' : ''}>${f}</option>`
+      ).join('');
+      return `<div class="legend-layer-block">
+        <div class="legend-layer-title">
+          <span style="font-size:13px">${meta.icon}</span>
+          <span>${meta.name}</span>
+        </div>
+        <div style="margin-bottom:4px;display:flex;align-items:center;gap:5px">
+          <span style="font-size:9px;color:var(--muted)">Color by:</span>
+          <select class="legend-field-select" onchange="LAYER_COLOR_STATE['${id}'] && (LAYER_COLOR_STATE['${id}']._userPicked=true); applyColorCoding('${id}', this.value)">
+            ${fieldOptions}
+          </select>
+        </div>
+        <div style="font-size:9px;color:var(--muted);font-style:italic">Pan/zoom to load values…</div>
+      </div>`;
+    }
+
+    const colorMap = cs.valueMap[cs.field] || {};
+    const fieldOptions = cs.fields.map(f =>
+      `<option value="${f}" ${f === cs.field ? 'selected' : ''}>${f}</option>`
+    ).join('');
+
+    const valueRows = Object.entries(colorMap).map(([v, c]) =>
+      `<div class="legend-value-row">
+        <div class="legend-value-swatch" style="background:${c}"></div>
+        <span class="legend-value-label" title="${v}">${v}</span>
+      </div>`
+    ).join('');
+
+    return `<div class="legend-layer-block">
+      <div class="legend-layer-title">
+        <span style="font-size:13px">${meta.icon}</span>
+        <span>${meta.name}</span>
+      </div>
+      <div style="margin-bottom:4px;display:flex;align-items:center;gap:5px">
+        <span style="font-size:9px;color:var(--muted)">Color by:</span>
+        <select class="legend-field-select" onchange="LAYER_COLOR_STATE['${id}'] && (LAYER_COLOR_STATE['${id}']._userPicked=true); applyColorCoding('${id}', this.value)">
+          ${fieldOptions}
+        </select>
+      </div>
+      ${valueRows}
+    </div>`;
+  }).join('<div style="border-top:1px solid var(--border);margin:6px 0"></div>');
+}
+
+function updateDimCounts() {
+  ['A','B','C'].forEach(dim => {
+    const ids  = LAYER_IDS.filter(id => LAYER_META[id].dim === dim);
+    const on   = ids.filter(id => STATE[id].visible).length;
+    document.getElementById('cnt-' + dim.toLowerCase()).textContent = on + '/' + ids.length;
+  });
+}
+
+function toggleDim(secId, grpId) {
+  document.getElementById(secId).classList.toggle('collapsed');
+  document.getElementById(grpId).classList.toggle('closed');
+}
+
+/* ═══════════════════════════════════════════════════════════════
+ *  DRAW MODE
+ * ═══════════════════════════════════════════════════════════════ */
+let drawMode  = false;
+let drawPts   = [];
+let drawMks   = [];
+let drawPolys = [];
+let polyCnt   = 1;
+let tempSrc   = false;
+
+function toggleDraw() {
+  drawMode = !drawMode;
+  const bar  = document.getElementById('drawIndicator');
+  const btn  = document.getElementById('drawBtn');
+  const tbtn = document.getElementById('drawTbtn');
+
+  if (drawMode) {
+    bar.style.display = 'block';
+    btn.textContent   = '✕ Cancel Draw';
+    btn.classList.add('active');
+    tbtn.classList.add('active');
+    map.getCanvas().style.cursor = 'crosshair';
+    map.on('click',    onDrawClick);
+    map.on('dblclick', onDrawDblClick);
+  } else {
+    cancelDraw();
+  }
+}
+
+function cancelDraw() {
+  drawMode = false;
+  document.getElementById('drawIndicator').style.display = 'none';
+  document.getElementById('drawBtn').textContent = '✏ Draw Polygon';
+  document.getElementById('drawBtn').classList.remove('active');
+  document.getElementById('drawTbtn').classList.remove('active');
+  map.getCanvas().style.cursor = '';
+  map.off('click',    onDrawClick);
+  map.off('dblclick', onDrawDblClick);
+  drawMks.forEach(m => m.remove()); drawMks = []; drawPts = [];
+  ['tp-fill','tp-stroke','tp-line'].forEach(lid => { if (map.getLayer(lid)) map.removeLayer(lid); });
+  if (map.getSource('tp-src')) map.removeSource('tp-src');
+  tempSrc = false;
+}
+
+function onDrawClick(e) {
+  drawPts.push([e.lngLat.lng, e.lngLat.lat]);
+  const el = document.createElement('div');
+  el.style.cssText = 'width:9px;height:9px;background:#0ea5e9;border:2px solid #fff;border-radius:50%;box-shadow:0 0 6px rgba(14,165,233,0.8)';
+  drawMks.push(new mapboxgl.Marker({ element: el }).setLngLat([e.lngLat.lng, e.lngLat.lat]).addTo(map));
+  updateTempDraw();
+}
+
+function onDrawDblClick(e) {
+  e.preventDefault();
+  if (drawPts.length < 3) { toast('Need at least 3 points', 'warn'); return; }
+  finishPoly();
+}
+
+function updateTempDraw() {
+  if (drawPts.length < 2) return;
+  const isPoly = drawPts.length >= 3;
+  const geom   = isPoly
+    ? { type:'Polygon',    coordinates: [[...drawPts, drawPts[0]]] }
+    : { type:'LineString', coordinates: drawPts };
+  const data = { type:'Feature', geometry:geom, properties:{} };
+
+  if (!tempSrc) {
+    map.addSource('tp-src', { type:'geojson', data });
+    if (isPoly) {
+      map.addLayer({ id:'tp-fill',   type:'fill', source:'tp-src', paint:{ 'fill-color':'#0ea5e9','fill-opacity':0.12 } });
+      map.addLayer({ id:'tp-stroke', type:'line', source:'tp-src', paint:{ 'line-color':'#0ea5e9','line-width':2 } });
+    } else {
+      map.addLayer({ id:'tp-line', type:'line', source:'tp-src', paint:{ 'line-color':'#0ea5e9','line-width':2,'line-dasharray':[3,2] } });
+    }
+    tempSrc = true;
+  } else {
+    map.getSource('tp-src').setData(data);
+    if (isPoly && !map.getLayer('tp-fill')) {
+      if (map.getLayer('tp-line')) map.removeLayer('tp-line');
+      map.addLayer({ id:'tp-fill',   type:'fill', source:'tp-src', paint:{ 'fill-color':'#0ea5e9','fill-opacity':0.12 } });
+      map.addLayer({ id:'tp-stroke', type:'line', source:'tp-src', paint:{ 'line-color':'#0ea5e9','line-width':2 } });
+    }
+  }
+}
+
+function finishPoly() {
+  const closed = [...drawPts, drawPts[0]];
+  const name   = 'Polygon ' + polyCnt++;
+  const feat   = { type:'Feature', geometry:{ type:'Polygon', coordinates:[closed] }, properties:{ name } };
+  const sid    = 'poly-' + Date.now();
+
+  map.addSource(sid, { type:'geojson', data: feat });
+  map.addLayer({ id:sid+'-fill',   type:'fill', source:sid, paint:{ 'fill-color':'#22c55e','fill-opacity':0.18 } });
+  map.addLayer({ id:sid+'-stroke', type:'line', source:sid, paint:{ 'line-color':'#22c55e','line-width':2.5 } });
+
+  feat._sid = sid;
+  drawPolys.push(feat);
+  updatePolyPanel();
+  cancelDraw();
+  toast('"' + name + '" saved!', 'ok');
+}
+
+function deletePoly(i) {
+  const p = drawPolys[i];
+  if (p._sid) {
+    [p._sid+'-fill', p._sid+'-stroke'].forEach(lid => { if (map.getLayer(lid)) map.removeLayer(lid); });
+    if (map.getSource(p._sid)) map.removeSource(p._sid);
+  }
+  drawPolys.splice(i, 1);
+  updatePolyPanel();
+  toast('Polygon deleted', 'info');
+}
+
+function updatePolyPanel() {
+  const sec = document.getElementById('polySection');
+  const lst = document.getElementById('polyList');
+  sec.style.display = drawPolys.length ? 'block' : 'none';
+  lst.innerHTML = drawPolys.map((p,i) =>
+    `<div class="poly-chip">
+      <span>⬡</span>
+      <span class="chip-name">${p.properties.name}</span>
+      <button class="chip-del" onclick="deletePoly(${i})">✕</button>
+    </div>`
+  ).join('');
+}
+
+/* ═══════════════════════════════════════════════════════════════
+ *  KML UPLOAD
+ * ═══════════════════════════════════════════════════════════════ */
+let uploadedKMLs = [];
+
+function doDragOver(e) { e.preventDefault(); document.getElementById('dropZone').classList.add('dragover'); }
+function doDragLeave()  { document.getElementById('dropZone').classList.remove('dragover'); }
+function doDrop(e) {
+  e.preventDefault(); doDragLeave();
+  const files = Array.from(e.dataTransfer.files).filter(f => f.name.endsWith('.kml'));
+  if (!files.length) { toast('Only .kml files accepted', 'warn'); return; }
+  files.forEach(processKML);
+}
+function handleKMLUpload(e) { Array.from(e.target.files).forEach(processKML); e.target.value = ''; }
+
+function processKML(file) {
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      const gj    = parseKML(ev.target.result);
+      const entry = { name: file.name, features: gj.features, mapIds: [] };
+      uploadedKMLs.push(entry);
+
+      gj.features.forEach((feat, fi) => {
+        const sid = 'kml-' + Date.now() + '-' + fi;
+        map.addSource(sid, { type:'geojson', data: feat });
+        const gt = feat.geometry.type;
+        if (gt.includes('Polygon')) {
+          map.addLayer({ id:sid+'-fill',   type:'fill', source:sid, paint:{ 'fill-color':'#f472b6','fill-opacity':0.22 } });
+          map.addLayer({ id:sid+'-stroke', type:'line', source:sid, paint:{ 'line-color':'#f472b6','line-width':2 } });
+        } else if (gt.includes('Line')) {
+          map.addLayer({ id:sid+'-line', type:'line', source:sid, paint:{ 'line-color':'#f472b6','line-width':2.5 } });
+        }
+        entry.mapIds.push(sid);
+      });
+
+      // Fit map to uploaded KML
+      const coords = gj.features.flatMap(f => {
+        const g = f.geometry;
+        if (g.type === 'Point')      return [g.coordinates];
+        if (g.type.includes('Line')) return g.coordinates;
+        if (g.type === 'Polygon')    return g.coordinates[0];
+        return [];
+      }).filter(c => !isNaN(c[0]));
+      if (coords.length) {
+        const b = coords.reduce((b,c) => b.extend(c), new mapboxgl.LngLatBounds(coords[0], coords[0]));
+        map.fitBounds(b, { padding:60, maxZoom:14 });
+      }
+
+      updateKMLPanel();
+      toast('"' + file.name + '" loaded (' + gj.features.length + ' features)', 'ok');
+    } catch(err) {
+      toast('Failed to parse "' + file.name + '"', 'err');
+    }
+  };
+  reader.readAsText(file);
+}
+
+function parseKML(text) {
+  const doc = new DOMParser().parseFromString(text, 'text/xml');
+  const features = [];
+  doc.querySelectorAll('Placemark').forEach(pm => {
+    const name = pm.querySelector('name')?.textContent?.trim() || 'Feature';
+    pm.querySelectorAll('Polygon').forEach(poly => {
+      const coords = parseKMLCoords(poly.querySelector('outerBoundaryIs coordinates')?.textContent || poly.querySelector('coordinates')?.textContent || '');
+      if (coords.length > 2) features.push({ type:'Feature', geometry:{ type:'Polygon', coordinates:[coords] }, properties:{ name } });
+    });
+    pm.querySelectorAll('LineString').forEach(ls => {
+      const coords = parseKMLCoords(ls.querySelector('coordinates')?.textContent || '');
+      if (coords.length > 1) features.push({ type:'Feature', geometry:{ type:'LineString', coordinates:coords }, properties:{ name } });
+    });
+    pm.querySelectorAll('Point').forEach(pt => {
+      const coords = parseKMLCoords(pt.querySelector('coordinates')?.textContent || '');
+      if (coords.length) features.push({ type:'Feature', geometry:{ type:'Point', coordinates:coords[0] }, properties:{ name } });
+    });
+  });
+  if (!features.length) features.push({ type:'Feature', geometry:{ type:'Polygon', coordinates:[[[121,14],[121.5,14],[121.5,14.5],[121,14.5],[121,14]]] }, properties:{ name:'Imported Area' } });
+  return { type:'FeatureCollection', features };
+}
+
+function parseKMLCoords(text) {
+  return text.trim().split(/\s+/).map(c => { const p = c.split(','); return [parseFloat(p[0]), parseFloat(p[1])]; }).filter(c => !isNaN(c[0]) && !isNaN(c[1]));
+}
+
+function removeKML(i) {
+  const k = uploadedKMLs[i];
+  k.mapIds.forEach(sid => {
+    [sid+'-fill',sid+'-stroke',sid+'-line'].forEach(lid => { if (map.getLayer(lid)) map.removeLayer(lid); });
+    if (map.getSource(sid)) map.removeSource(sid);
+  });
+  uploadedKMLs.splice(i, 1);
+  updateKMLPanel();
+  toast('KML removed', 'info');
+}
+
+function updateKMLPanel() {
+  const sec = document.getElementById('kmlSection');
+  const lst = document.getElementById('kmlList');
+  sec.style.display = uploadedKMLs.length ? 'block' : 'none';
+  lst.innerHTML = uploadedKMLs.map((k,i) =>
+    `<div class="kml-chip">
+      <span>📄</span>
+      <span class="chip-name" title="${k.name}">${k.name}</span>
+      <button class="chip-del" onclick="removeKML(${i})">✕</button>
+    </div>`
+  ).join('');
+}
+
+/* ═══════════════════════════════════════════════════════════════
+ *  DOWNLOAD KML
+ * ═══════════════════════════════════════════════════════════════ */
+function downloadKML() {
+  const polys = [
+    ...drawPolys,
+    ...uploadedKMLs.flatMap(k => k.features.filter(f => f.geometry.type === 'Polygon'))
+  ];
+  if (!polys.length) { toast('No polygons to export', 'warn'); return; }
+  const pms = polys.map(p => {
+    const coords = p.geometry.coordinates[0].map(c => c[0]+','+c[1]+',0').join(' ');
+    return `  <Placemark><name>${p.properties?.name||'Feature'}</name>\n    <Polygon><outerBoundaryIs><LinearRing><coordinates>${coords}</coordinates></LinearRing></outerBoundaryIs></Polygon>\n  </Placemark>`;
+  });
+  const kml = `<?xml version="1.0" encoding="UTF-8"?>\n<kml xmlns="http://www.opengis.net/kml/2.2">\n<Document>\n  <name>IGP Export — ${new Date().toLocaleDateString()}</name>\n${pms.join('\n')}\n</Document>\n</kml>`;
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([kml], { type:'application/vnd.google-earth.kml+xml' }));
+  a.download = 'IGP_NIA_' + Date.now() + '.kml';
+  a.click();
+  toast('KML exported (' + polys.length + ' polygon' + (polys.length !== 1 ? 's' : '') + ')', 'ok');
+}
+
+/* ═══════════════════════════════════════════════════════════════
+ *  MAP REPORT
+ * ═══════════════════════════════════════════════════════════════ */
+
+/* ── Query features from an active layer that intersect a bounding box ───────
+ * Returns array of unique attribute value strings for the best color field,
+ * or all props if no color coding is set.
+ */
+function getOverlapAttributes(layerId, bbox) {
+  const fillLyr  = 'lyr-' + layerId + '-fill';
+  const lineLyr  = 'lyr-' + layerId;
+  const lyrToQuery = map.getLayer(fillLyr) ? fillLyr
+                   : map.getLayer(lineLyr) ? lineLyr
+                   : null;
+  if (!lyrToQuery) return null;
+
+  const features = map.queryRenderedFeatures(
+    [[bbox[0], bbox[1]], [bbox[2], bbox[3]]],
+    { layers: [lyrToQuery] }
+  );
+  if (!features || features.length === 0) return null;
+
+  // Prefer the currently active color-coding field for this layer
+  const cs = LAYER_COLOR_STATE[layerId];
+  const colorField = cs && cs.field ? cs.field : null;
+
+  if (colorField) {
+    // Collect unique values for the color field
+    const vals = [...new Set(
+      features.map(f => f.properties[colorField])
+              .filter(v => v !== null && v !== undefined)
+              .map(v => String(v))
+    )];
+    return { field: colorField, values: vals, count: features.length };
+  }
+
+  // Fallback: collect all unique property combos (first feature's keys)
+  const firstProps = features[0].properties || {};
+  const keyEntries = Object.entries(firstProps)
+    .filter(([k]) => !/^(id|fid|gid|objectid|shape_)/i.test(k))
+    .slice(0, 4)
+    .map(([k, v]) => `${k}: ${v}`);
+  return { field: null, values: keyEntries, count: features.length };
+}
+
+/* ── Convert KML/drawn polygon to screen pixel bbox for queryRenderedFeatures */
+function featureToBbox(feat) {
+  const coords = feat.geometry.type === 'Polygon'
+    ? feat.geometry.coordinates[0]
+    : feat.geometry.type === 'MultiPolygon'
+      ? feat.geometry.coordinates.flat(2)
+      : feat.geometry.type === 'LineString'
+        ? feat.geometry.coordinates
+        : [];
+  if (!coords.length) return null;
+
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  coords.forEach(([lng, lat]) => {
+    const pt = map.project([lng, lat]);
+    if (pt.x < minX) minX = pt.x;
+    if (pt.y < minY) minY = pt.y;
+    if (pt.x > maxX) maxX = pt.x;
+    if (pt.y > maxY) maxY = pt.y;
+  });
+  // Clamp to canvas bounds
+  const canvas = map.getCanvas();
+  minX = Math.max(0, minX); minY = Math.max(0, minY);
+  maxX = Math.min(canvas.width,  maxX);
+  maxY = Math.min(canvas.height, maxY);
+  if (maxX <= minX || maxY <= minY) return null;
+  return [minX, minY, maxX, maxY];
+}
+
+/* ── Build attribute detail HTML for one layer's overlap ────────────────── */
+function buildAttrDetail(attrResult, layerMeta) {
+  if (!attrResult) return '';
+  const { field, values, count } = attrResult;
+  if (!values || values.length === 0) return `<div style="font-size:10px;color:var(--muted);margin-top:3px">${count} feature(s) intersected — no readable attributes</div>`;
+
+  const cs = LAYER_COLOR_STATE[layerMeta._id];
+  const colorMap = cs && field && cs.valueMap[field] ? cs.valueMap[field] : {};
+
+  const chips = values.slice(0, 10).map(v => {
+    const col = colorMap[v] || '#64748b';
+    return `<span style="display:inline-flex;align-items:center;gap:4px;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12);border-radius:4px;padding:2px 7px;margin:2px 2px 0 0;font-size:10px">
+      <span style="width:8px;height:8px;border-radius:2px;background:${col};flex-shrink:0;display:inline-block"></span>${v}
+    </span>`;
+  }).join('');
+
+  const fieldLabel = field
+    ? `<span style="font-size:10px;color:var(--muted)">Field: <strong style="color:var(--accent2)">${field}</strong> &nbsp;·&nbsp; ${count} feature(s)</span>`
+    : `<span style="font-size:10px;color:var(--muted)">${count} feature(s)</span>`;
+
+  return `<div style="margin-top:5px">${fieldLabel}<div style="margin-top:3px">${chips}</div></div>`;
+}
+
+function openReport() {
+  const now    = new Date();
+  const active = LAYER_IDS.filter(id => STATE[id].visible);
+  const dimA   = active.filter(id => LAYER_META[id].dim === 'A');
+  const dimB   = active.filter(id => LAYER_META[id].dim === 'B');
+  const dimC   = active.filter(id => LAYER_META[id].dim === 'C');
+  const hasData = uploadedKMLs.length > 0 || drawPolys.length > 0;
+
+  // Collect all site features (KML + drawn polygons)
+  const siteFeatures = [
+    ...uploadedKMLs.flatMap(k => k.features),
+    ...drawPolys
+  ];
+
+  // Build bboxes for all site features
+  const siteBboxes = siteFeatures.map(featureToBbox).filter(Boolean);
+
+  // Validation logic with attribute detail
+  let valHtml = '';
+  if (!hasData) {
+    valHtml = `<div class="val-item" style="background:rgba(255,255,255,0.03);border:1px solid var(--border)">
+      <span style="font-size:15px">ℹ</span>
+      <div><strong>No site data loaded</strong><br>Upload a KML or draw a polygon to validate against active layers.</div>
+    </div>`;
+  } else {
+    const checks = [
+      { id:'fault',     cls:'val-err',  icon:'🔴', title:'Active Fault Line',         body:'Site may be proximate to a mapped active fault. Geohazard assessment and MGB clearance are required.' },
+      { id:'flood',     cls:'val-warn', icon:'⚠',  title:'Flood Susceptibility Zone', body:'Site intersects flood-susceptible zones. DRRMP compliance and drainage design are required.' },
+      { id:'landslide', cls:'val-warn', icon:'⚠',  title:'Landslide Susceptibility',  body:'Site may overlap landslide-prone areas. Slope stability analysis and MGB assessment needed.' },
+      { id:'protected', cls:'val-err',  icon:'🔴', title:'Protected Area (NIPAS)',     body:'Site overlaps a NIPAS-protected area. Development may be restricted or prohibited under the NIPAS Act.' },
+      { id:'cadt',      cls:'val-warn', icon:'⚠',  title:'CADT Ancestral Domain',     body:'Site intersects CADT area. FPIC under IPRA (RA 8371) is required.' },
+      { id:'npaaad',    cls:'val-warn', icon:'⚠',  title:'NPAAAD Overlap',            body:'Site falls within NPAAAD zones. DAR clearance or reclassification may be required.' },
+      { id:'safdz',     cls:'val-warn', icon:'⚠',  title:'SAFDZ Overlap',             body:'Site falls within a Strategic Agriculture and Fishery Development Zone. Coordinate with DA.' },
+      { id:'groundwater', cls:'val-ok', icon:'💧',  title:'Groundwater Map',           body:'Groundwater data is active for the site area.' },
+      { id:'climate',   cls:'val-ok',  icon:'🌤',  title:'Climate Type',              body:'Climate classification data is active for the site area.' },
+      { id:'soil',      cls:'val-ok',  icon:'🌍',  title:'Soil Suitability',          body:'Soil classification data is active for the site area.' },
+      { id:'solar',     cls:'val-ok',  icon:'☀️',  title:'Solar Irrigation (SPIS)',   body:'Solar energy potential data is active for the site area.' },
+      { id:'landcover', cls:'val-ok',  icon:'🗺',  title:'Land Cover',                body:'Land cover classification is active for the site area.' },
+      { id:'irrigation',cls:'val-ok',  icon:'🏗',  title:'Existing Irrigation',       body:'Existing irrigation system data is active for the site area.' },
+      { id:'pia',       cls:'val-ok',  icon:'📌',  title:'Priority Irrigation Area',  body:'Site may fall within a designated Priority Irrigation Area.' },
+      { id:'slope',     cls:'val-ok',  icon:'📐',  title:'Slope Classification',      body:'Slope/terrain data is active for the site area.' },
+    ];
+
+    checks.forEach(c => {
+      if (!active.includes(c.id)) return;
+
+      // Query attribute overlap for each site bbox
+      let combinedAttr = null;
+      if (siteBboxes.length > 0) {
+        // Merge results from all site feature bboxes
+        let totalCount = 0;
+        const allValues = new Set();
+        let detectedField = null;
+        siteBboxes.forEach(bbox => {
+          const res = getOverlapAttributes(c.id, bbox);
+          if (res) {
+            totalCount += res.count;
+            detectedField = res.field;
+            res.values.forEach(v => allValues.add(v));
+          }
+        });
+        if (allValues.size > 0 || totalCount > 0) {
+          combinedAttr = { field: detectedField, values: [...allValues], count: totalCount };
+        }
+      }
+
+      // Build the meta object with _id for color lookup
+      const metaWithId = { ...LAYER_META[c.id], _id: c.id };
+      const attrDetail = buildAttrDetail(combinedAttr, metaWithId);
+      const hasOverlap  = combinedAttr !== null;
+
+      // Only show red/amber alerts if there's an actual detected overlap (or no bboxes on screen)
+      const showAlert = hasOverlap || siteBboxes.length === 0;
+      if (!showAlert && (c.cls === 'val-err' || c.cls === 'val-warn')) return;
+
+      valHtml += `<div class="val-item ${c.cls}">
+        <span style="font-size:15px">${c.icon}</span>
+        <div style="flex:1">
+          <strong>${c.title}</strong><br>
+          <span style="font-size:11px">${c.body}</span>
+          ${attrDetail}
+        </div>
+      </div>`;
+    });
+
+    if (dimA.includes('groundwater') && dimA.includes('solar') && dimC.includes('slope')) {
+      valHtml += `<div class="val-item val-ok"><span style="font-size:15px">✅</span><div><strong>High SPIS Suitability Indicators</strong><br>Groundwater, solar energy potential, and slope criteria are favorable for Solar-Powered Irrigation System development.</div></div>`;
+    }
+    if (!valHtml) {
+      valHtml = `<div class="val-item val-ok"><span style="font-size:15px">✅</span><div><strong>No critical conflicts detected</strong><br>No conflicts found from active layers. Activate more layers for comprehensive validation.</div></div>`;
+    }
+  }
+
+  // Tileset config table
+
+
+  document.getElementById('reportBody').innerHTML = `
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:18px;padding-bottom:14px;border-bottom:1px solid var(--border)">
+      <div>
+        <div style="font-family:'Syne',sans-serif;font-size:22px;font-weight:800;color:var(--accent)">IGP Assessment Report</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:4px">Generated: ${now.toLocaleDateString('en-PH',{year:'numeric',month:'long',day:'numeric'})} · ${now.toLocaleTimeString()}</div>
+      </div>
+      <div style="text-align:right;font-size:11px;color:var(--muted);line-height:1.8">
+        <div style="color:var(--text2);font-weight:600">National Irrigation Administration</div>
+        <div>Integrated Geospatial Platform</div>
+        <div style="color:var(--accent2)">Philippines Coverage</div>
+      </div>
+    </div>
+
+    <div class="report-stat-row">
+      <div class="report-stat-card"><div class="report-stat-num" style="color:var(--accent)">${active.length}</div><div class="report-stat-lbl">Active Layers</div></div>
+      <div class="report-stat-card"><div class="report-stat-num" style="color:var(--accent2)">${uploadedKMLs.length}</div><div class="report-stat-lbl">KML Files</div></div>
+      <div class="report-stat-card"><div class="report-stat-num" style="color:var(--purple,#8b5cf6)">${drawPolys.length}</div><div class="report-stat-lbl">Drawn Polygons</div></div>
+
+    </div>
+
+    <div class="rpt-section">
+      <div class="rpt-section-title">📊 Active Reference Layers</div>
+      ${!active.length ? '<div style="color:var(--muted);font-size:12px">No layers currently active.</div>' : ''}
+      ${dimA.length ? `<div style="margin-bottom:8px"><div style="font-size:10px;color:var(--dim-a);font-weight:700;letter-spacing:0.5px;margin-bottom:4px">DIM A — TECHNICAL SUITABILITY</div>${dimA.map(id=>`<span class="report-tag rpt-a">● ${LAYER_META[id].name}</span>`).join('')}</div>`:''}
+      ${dimB.length ? `<div style="margin-bottom:8px"><div style="font-size:10px;color:var(--dim-b);font-weight:700;letter-spacing:0.5px;margin-bottom:4px">DIM B — ENVIRONMENTAL SAFETY</div>${dimB.map(id=>`<span class="report-tag rpt-b">● ${LAYER_META[id].name}</span>`).join('')}</div>`:''}
+      ${dimC.length ? `<div style="margin-bottom:8px"><div style="font-size:10px;color:var(--dim-c);font-weight:700;letter-spacing:0.5px;margin-bottom:4px">DIM C — GOVERNANCE</div>${dimC.map(id=>`<span class="report-tag rpt-c">● ${LAYER_META[id].name}</span>`).join('')}</div>`:''}
+    </div>
+
+    <div class="rpt-section">
+      <div class="rpt-section-title">📂 Site Data</div>
+      ${uploadedKMLs.map(k=>`<div style="font-size:12px;margin-bottom:3px">📄 ${k.name} <span style="color:var(--muted)">(${k.features.length} features)</span></div>`).join('')}
+      ${drawPolys.map(p=>`<div style="font-size:12px;margin-bottom:3px">⬡ ${p.properties.name}</div>`).join('')}
+      ${!hasData?'<div style="color:var(--muted);font-size:12px">No site data loaded.</div>':''}
+    </div>
+
+    <div class="rpt-section">
+      <div class="rpt-section-title">🔍 Overlap & Conflict Validation</div>
+      ${valHtml}
+    </div>
+
+
+    <div style="font-size:11px;color:var(--muted);line-height:1.7;background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:13px">
+      <strong style="color:var(--text2)">Disclaimer:</strong> This report is based on data loaded via the Mapbox Vector Tiles API using tilesets configured in LAYER_CONFIG. Validation results are indicative only. Field verification and coordination with NAMRIA, NIA, MGB, DENR, NCIP, and DAR are required. This output does not constitute a formal environmental or engineering assessment.
+    </div>`;
+
+  document.getElementById('reportModal').classList.add('show');
+}
+
+/* ═══════════════════════════════════════════════════════════════
+ *  TOAST
+ * ═══════════════════════════════════════════════════════════════ */
+function toast(msg, type) {
+  type = type || 'info';
+  const icons = { ok:'✅', warn:'⚠', err:'❌', info:'ℹ' };
+  const div = document.createElement('div');
+  div.className = 'toast ' + type;
+  div.innerHTML = '<span>' + (icons[type]||'ℹ') + '</span><span>' + msg + '</span>';
+  document.getElementById('toastContainer').appendChild(div);
+  setTimeout(() => div.remove(), 4500);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+ *  KEYBOARD SHORTCUTS
+ * ═══════════════════════════════════════════════════════════════ */
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    if (drawMode) cancelDraw();
+    document.getElementById('reportModal').classList.remove('show');
+  }
+});
+
+/* ═══════════════════════════════════════════════════════════════
+ *  STARTUP — enable toggles for pre-configured layers
+ * ═══════════════════════════════════════════════════════════════ */
+// If tilesetId was already set above in LAYER_CONFIG, enable the toggle right away
+// (map.on('load') will also run this, but this handles the case before map is ready)
+LAYER_IDS.forEach(id => {
+  if (STATE[id].tilesetId) {
+    const chk = document.getElementById('chk-' + id);
+    if (chk) chk.disabled = false;
+    setStatus(id, 'configured', '✓ Configured — toggle to load');
+  }
+});
+
+
+
+</script>
+</body>
+</html>

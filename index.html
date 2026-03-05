@@ -142,6 +142,20 @@
   .poly-chip { display: flex; align-items: center; gap: 8px; padding: 5px 8px; background: rgba(34,197,94,0.08); border: 1px solid rgba(34,197,94,0.2); border-radius: 6px; margin-bottom: 4px; font-size: 11px; }
   .poly-chip .chip-name { flex: 1; color: var(--text); font-weight: 500; }
 
+  /* ── COORDINATE SEARCH ── */
+  .coord-search-section { padding: 10px 12px; border-top: 1px solid var(--border); background: rgba(139,92,246,0.03); }
+  .coord-search-title { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: var(--muted); margin-bottom: 7px; }
+  .coord-search-row { display: flex; gap: 5px; }
+  .coord-input { flex: 1; background: var(--panel2); border: 1px solid var(--border); border-radius: 6px; padding: 5px 8px; font-size: 11px; color: var(--text); outline: none; font-family: inherit; }
+  .coord-input:focus { border-color: #8b5cf6; }
+  .coord-input::placeholder { color: var(--muted); }
+  .coord-add-btn { background: #8b5cf6; border: none; border-radius: 6px; color: #fff; font-size: 13px; padding: 0 10px; cursor: pointer; flex-shrink: 0; }
+  .coord-add-btn:hover { background: #7c3aed; }
+  .coord-hint { font-size: 10px; color: var(--muted); margin-top: 4px; }
+  .marker-section { padding: 10px 12px; border-top: 1px solid var(--border); background: rgba(139,92,246,0.03); display: none; }
+  .marker-chip { display: flex; align-items: center; gap: 8px; padding: 5px 8px; background: rgba(139,92,246,0.1); border: 1px solid rgba(139,92,246,0.25); border-radius: 6px; margin-bottom: 4px; font-size: 11px; }
+  .marker-chip .chip-name { flex: 1; color: var(--text); font-weight: 500; }
+
   /* ── MODAL ── */
   .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 1000; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px); opacity: 0; pointer-events: none; transition: opacity 0.2s; }
   .modal-overlay.show { opacity: 1; pointer-events: all; }
@@ -380,7 +394,7 @@
             <div class="layer-icon" style="background:rgba(14,165,233,0.12)">📌</div>
             <div class="layer-info">
               <div class="layer-name">PIA</div>
-              <div class="layer-sub">Priority Irrigation Area</div>
+              <div class="layer-sub">Potential Irrigable Area</div>
               <div class="layer-api-status not-set" id="st-pia">No API configured</div>
             </div>
             <label class="toggle"><input type="checkbox" id="chk-pia" disabled onchange="toggleLayer('pia')"><span class="slider"></span></label>
@@ -411,6 +425,24 @@
       <div class="kml-section-title">⬡ Drawn Polygons</div>
       <div id="polyList"></div>
       <button class="btn btn-ghost" style="width:100%;margin-top:6px;font-size:11px" onclick="downloadKML()">⬇ Export All as KML</button>
+    </div>
+
+    <!-- Coordinate Search -->
+    <div class="coord-search-section">
+      <div class="coord-search-title">📍 Add Coordinate Marker</div>
+      <div style="display:flex;flex-direction:column;gap:5px">
+        <input class="coord-input" id="coordLngInput" type="number" step="any" placeholder="Longitude (e.g. 121.05)" />
+        <input class="coord-input" id="coordLatInput" type="number" step="any" placeholder="Latitude (e.g. 14.65)" />
+        <button class="coord-add-btn" onclick="addCoordMarker()" style="width:100%;padding:6px 0;font-size:12px;font-weight:600;border-radius:6px">📍 Add Marker</button>
+      </div>
+      <div class="coord-hint">WGS84 decimal degrees · Philippines: Lng 116–128, Lat 4–21</div>
+    </div>
+
+    <!-- Placed Markers list -->
+    <div class="marker-section" id="markerSection">
+      <div class="kml-section-title">📍 Placed Markers</div>
+      <div id="markerList"></div>
+      <button class="btn btn-ghost" style="width:100%;margin-top:6px;font-size:11px" onclick="exportMarkersKML()">⬇ Export Markers as KML</button>
     </div>
 
     <!-- Upload Area -->
@@ -685,7 +717,7 @@ const LAYER_CONFIG = {
   },
 
   pia: {
-    // C5 — PIA (Priority Irrigation Area)
+    // C5 — PIA (Potential Irrigable Area)
     // ▼▼▼  EDIT  ▼▼▼
     tilesetId:   '',    // ← PASTE: C5 PIA tileset ID
     sourceLayer: '',    // ← PASTE: source layer name
@@ -727,7 +759,7 @@ const LAYER_META = {
   cadt:        { name:'CADT',                      sub:"Indigenous Peoples' Rights",  dim:'C', icon:'📜' },
   npaaad:      { name:'NPAAAD',                      sub:'Agricultural Land Protection',   dim:'C', icon:'🌾' },
   safdz:       { name:'SAFDZ',                       sub:'Strategic Agri & Fishery Dev. Zone', dim:'C', icon:'🗂' },
-  pia:         { name:'PIA',                       sub:'Priority Irrigation Area',    dim:'C', icon:'📌' },
+  pia:         { name:'PIA',                       sub:'Potential Irrigable Area',    dim:'C', icon:'📌' },
   slope:       { name:'Slope 0–8°',               sub:'Terrain Suitability',         dim:'C', icon:'📐' },
 };
 
@@ -1634,6 +1666,128 @@ function downloadKML() {
 }
 
 /* ═══════════════════════════════════════════════════════════════
+ *  COORDINATE SEARCH & MARKERS
+ * ═══════════════════════════════════════════════════════════════ */
+let placedMarkers = [];   // { name, lng, lat, mapMarker }
+let markerCnt = 1;
+
+function addCoordMarker() {
+  const lngVal = document.getElementById('coordLngInput').value.trim();
+  const latVal = document.getElementById('coordLatInput').value.trim();
+  const lng = parseFloat(lngVal);
+  const lat = parseFloat(latVal);
+
+  if (isNaN(lng) || isNaN(lat)) {
+    toast('Enter valid longitude and latitude', 'warn'); return;
+  }
+  if (lng < -180 || lng > 180 || lat < -90 || lat > 90) {
+    toast('Coordinates out of valid range', 'warn'); return;
+  }
+
+  const name = 'Marker ' + markerCnt++;
+
+  // Custom purple pin element
+  const el = document.createElement('div');
+  el.style.cssText = [
+    'width:22px','height:22px','border-radius:50% 50% 50% 0',
+    'background:#8b5cf6','border:3px solid #fff',
+    'transform:rotate(-45deg)',
+    'box-shadow:0 2px 8px rgba(139,92,246,0.6)',
+    'cursor:pointer'
+  ].join(';');
+
+  const mapMarker = new mapboxgl.Marker({ element: el, anchor: 'bottom' })
+    .setLngLat([lng, lat])
+    .setPopup(new mapboxgl.Popup({ offset: 25, closeButton: true })
+      .setHTML(`<div style="font-family:inherit;font-size:12px;min-width:160px">
+        <div style="font-weight:700;margin-bottom:4px">📍 ${name}</div>
+        <div style="color:#6b7280;font-size:11px">Lng: ${lng.toFixed(6)}</div>
+        <div style="color:#6b7280;font-size:11px">Lat: ${lat.toFixed(6)}</div>
+      </div>`))
+    .addTo(map);
+
+  placedMarkers.push({ name, lng, lat, mapMarker });
+  updateMarkerPanel();
+  updateMarkerReport();
+
+  // Fly to marker
+  map.flyTo({ center: [lng, lat], zoom: Math.max(map.getZoom(), 12), duration: 900 });
+
+  // Clear inputs
+  document.getElementById('coordLngInput').value = '';
+  document.getElementById('coordLatInput').value = '';
+
+  toast('"' + name + '" placed at ' + lat.toFixed(5) + ', ' + lng.toFixed(5), 'ok');
+}
+
+// Allow Enter key in inputs
+document.addEventListener('DOMContentLoaded', () => {
+  ['coordLngInput','coordLatInput'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('keydown', e => { if (e.key === 'Enter') addCoordMarker(); });
+  });
+});
+
+function deleteMarker(i) {
+  const m = placedMarkers[i];
+  if (m.mapMarker) m.mapMarker.remove();
+  placedMarkers.splice(i, 1);
+  updateMarkerPanel();
+  updateMarkerReport();
+  toast('Marker removed', 'info');
+}
+
+function flyToMarker(i) {
+  const m = placedMarkers[i];
+  map.flyTo({ center: [m.lng, m.lat], zoom: Math.max(map.getZoom(), 14), duration: 800 });
+  m.mapMarker.togglePopup();
+}
+
+function updateMarkerPanel() {
+  const sec = document.getElementById('markerSection');
+  const lst = document.getElementById('markerList');
+  sec.style.display = placedMarkers.length ? 'block' : 'none';
+  lst.innerHTML = placedMarkers.map((m, i) =>
+    `<div class="marker-chip">
+      <span style="cursor:pointer" onclick="flyToMarker(${i})">📍</span>
+      <div class="chip-name" style="display:flex;flex-direction:column;gap:1px;cursor:pointer" onclick="flyToMarker(${i})">
+        <span>${m.name}</span>
+        <span style="font-size:10px;color:#8b5cf6;font-weight:600">${m.lat.toFixed(5)}, ${m.lng.toFixed(5)}</span>
+      </div>
+      <button class="chip-del" onclick="deleteMarker(${i})">✕</button>
+    </div>`
+  ).join('');
+}
+
+function exportMarkersKML() {
+  if (!placedMarkers.length) { toast('No markers to export', 'warn'); return; }
+  const pms = placedMarkers.map(m =>
+    `  <Placemark>
+    <name>${m.name}</name>
+    <Point><coordinates>${m.lng},${m.lat},0</coordinates></Point>
+  </Placemark>`
+  ).join('
+');
+  const kml = `<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+<Document>
+  <name>IGP Markers — ${new Date().toLocaleDateString()}</name>
+${pms}
+</Document>
+</kml>`;
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([kml], { type:'application/vnd.google-earth.kml+xml' }));
+  a.download = 'IGP_Markers_' + Date.now() + '.kml';
+  a.click();
+  toast('Markers exported (' + placedMarkers.length + ')', 'ok');
+}
+
+// Called after marker add/delete to refresh the report if it's open
+function updateMarkerReport() {
+  // no-op here; report is regenerated fresh each time openReport() is called
+}
+
+/* ═══════════════════════════════════════════════════════════════
  *  MAP REPORT
  * ═══════════════════════════════════════════════════════════════ */
 
@@ -1680,13 +1834,12 @@ function getOverlapAttributes(layerId, bbox) {
 
 /* ── Convert KML/drawn polygon to screen pixel bbox for queryRenderedFeatures */
 function featureToBbox(feat) {
-  const coords = feat.geometry.type === 'Polygon'
-    ? feat.geometry.coordinates[0]
-    : feat.geometry.type === 'MultiPolygon'
-      ? feat.geometry.coordinates.flat(2)
-      : feat.geometry.type === 'LineString'
-        ? feat.geometry.coordinates
-        : [];
+  const g = feat.geometry;
+  const coords = g.type === 'Polygon'      ? g.coordinates[0]
+               : g.type === 'MultiPolygon' ? g.coordinates.flat(2)
+               : g.type === 'LineString'   ? g.coordinates
+               : g.type === 'Point'        ? [g.coordinates]
+               : [];
   if (!coords.length) return null;
 
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
@@ -1735,12 +1888,13 @@ function openReport() {
   const dimA   = active.filter(id => LAYER_META[id].dim === 'A');
   const dimB   = active.filter(id => LAYER_META[id].dim === 'B');
   const dimC   = active.filter(id => LAYER_META[id].dim === 'C');
-  const hasData = uploadedKMLs.length > 0 || drawPolys.length > 0;
+  const hasData = uploadedKMLs.length > 0 || drawPolys.length > 0 || placedMarkers.length > 0;
 
-  // Collect all site features (KML + drawn polygons)
+  // Collect all site features (KML + drawn polygons + markers as point features)
   const siteFeatures = [
     ...uploadedKMLs.flatMap(k => k.features),
-    ...drawPolys
+    ...drawPolys,
+    ...placedMarkers.map(m => ({ type:'Feature', geometry:{ type:'Point', coordinates:[m.lng, m.lat] }, properties:{ name: m.name } }))
   ];
 
   // Build bboxes for all site features
@@ -1768,7 +1922,7 @@ function openReport() {
       { id:'solar',     cls:'val-ok',  icon:'☀️',  title:'Solar Irrigation (SPIS)',   body:'Solar energy potential data is active for the site area.' },
       { id:'landcover', cls:'val-ok',  icon:'🗺',  title:'Land Cover',                body:'Land cover classification is active for the site area.' },
       { id:'irrigation',cls:'val-ok',  icon:'🏗',  title:'Existing Irrigation',       body:'Existing irrigation system data is active for the site area.' },
-      { id:'pia',       cls:'val-ok',  icon:'📌',  title:'Priority Irrigation Area',  body:'Site may fall within a designated Priority Irrigation Area.' },
+      { id:'pia',       cls:'val-ok',  icon:'📌',  title:'Potential Irrigable Area',  body:'Site falls within a Potential Irrigable Area. Coordinate with NIA for irrigation development planning.' },
       { id:'slope',     cls:'val-ok',  icon:'📐',  title:'Slope Classification',      body:'Slope/terrain data is active for the site area.' },
     ];
 
@@ -1842,6 +1996,7 @@ function openReport() {
       <div class="report-stat-card"><div class="report-stat-num" style="color:var(--accent)">${active.length}</div><div class="report-stat-lbl">Active Layers</div></div>
       <div class="report-stat-card"><div class="report-stat-num" style="color:var(--accent2)">${uploadedKMLs.length}</div><div class="report-stat-lbl">KML Files</div></div>
       <div class="report-stat-card"><div class="report-stat-num" style="color:var(--purple,#8b5cf6)">${drawPolys.length}</div><div class="report-stat-lbl">Drawn Polygons</div></div>
+      <div class="report-stat-card"><div class="report-stat-num" style="color:#8b5cf6">${placedMarkers.length}</div><div class="report-stat-lbl">Markers</div></div>
       <div class="report-stat-card"><div class="report-stat-num" style="color:#22c55e;font-size:${(() => { const ha = [...uploadedKMLs.flatMap(k=>k.features), ...drawPolys].reduce((s,f)=>s+(f.properties&&f.properties.area_ha||0),0); return ha>=1000?'14px':'18px'; })()}">${(() => { const ha = [...uploadedKMLs.flatMap(k=>k.features), ...drawPolys].reduce((s,f)=>s+(f.properties&&f.properties.area_ha||0),0); return fmtHa(ha); })()}</div><div class="report-stat-lbl">Total Site Area</div></div>
 
     </div>
@@ -1858,7 +2013,8 @@ function openReport() {
       <div class="rpt-section-title">📂 Site Data</div>
       ${uploadedKMLs.map(k=>`<div style="font-size:12px;margin-bottom:4px;display:flex;align-items:center;gap:8px">📄 <span>${k.name}</span><span style="color:var(--muted)">(${k.features.length} feature${k.features.length!==1?'s':''})</span>${k.area_ha>0?`<span style="background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.3);border-radius:4px;padding:1px 7px;font-size:10px;color:#22c55e;font-weight:700">${fmtHa(k.area_ha)}</span>`:''}</div>`).join('')}
       ${drawPolys.map(p=>`<div style="font-size:12px;margin-bottom:4px;display:flex;align-items:center;gap:8px">⬡ <span>${p.properties.name}</span>${p.properties.area_ha?`<span style="background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.3);border-radius:4px;padding:1px 7px;font-size:10px;color:#22c55e;font-weight:700">${fmtHa(p.properties.area_ha)}</span>`:''}</div>`).join('')}
-      ${!hasData?'<div style="color:var(--muted);font-size:12px">No site data loaded.</div>':''}
+      ${placedMarkers.map((m,i)=>`<div style="font-size:12px;margin-bottom:4px;display:flex;align-items:center;gap:8px">📍 <span>${m.name}</span><span style="background:rgba(139,92,246,0.12);border:1px solid rgba(139,92,246,0.3);border-radius:4px;padding:1px 7px;font-size:10px;color:#8b5cf6;font-weight:700">${m.lat.toFixed(5)}, ${m.lng.toFixed(5)}</span></div>`).join('')}
+      ${!hasData && !placedMarkers.length?'<div style="color:var(--muted);font-size:12px">No site data loaded.</div>':''}
     </div>
 
     <div class="rpt-section">

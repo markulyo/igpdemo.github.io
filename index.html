@@ -118,7 +118,7 @@
   @keyframes breathe { 0%,100%{opacity:1; box-shadow:0 0 0 0 rgba(14,165,233,0.4)} 50%{opacity:0.85; box-shadow:0 0 0 8px rgba(14,165,233,0)} }
 
   /* ── LEGEND ── */
-  .legend-panel { position: absolute; bottom: 30px; right: 12px; background: rgba(17,24,39,0.95); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; font-size: 11px; backdrop-filter: blur(8px); z-index: 10; min-width: 180px; max-width: 220px; display: none; }
+  .legend-panel { position: absolute; bottom: 30px; right: 12px; background: rgba(17,24,39,0.95); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; font-size: 11px; backdrop-filter: blur(8px); z-index: 10; min-width: 180px; max-width: 240px; display: none; max-height: calc(100vh - 100px); overflow-y: auto; }
   .legend-panel h4 { font-family: 'Syne', sans-serif; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: var(--muted); margin-bottom: 8px; }
   .legend-item { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; font-size: 11px; }
   .legend-swatch { width: 14px; height: 14px; border-radius: 3px; flex-shrink: 0; }
@@ -133,14 +133,14 @@
   .kml-section { padding: 10px 12px; border-top: 1px solid var(--border); background: rgba(14,165,233,0.03); display: none; }
   .kml-section-title { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: var(--muted); margin-bottom: 7px; }
   .kml-chip { display: flex; align-items: center; gap: 8px; padding: 5px 8px; background: rgba(14,165,233,0.1); border: 1px solid rgba(14,165,233,0.25); border-radius: 6px; margin-bottom: 4px; font-size: 11px; }
-  .kml-chip .chip-name { flex: 1; color: var(--text); font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .kml-chip .chip-name { flex: 1; color: var(--text); font-weight: 500; min-width: 0; overflow: hidden; }
   .chip-del { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 13px; }
   .chip-del:hover { color: var(--danger); }
 
   /* ── DRAWN POLYGONS ── */
   .poly-section { padding: 10px 12px; border-top: 1px solid var(--border); background: rgba(34,197,94,0.03); display: none; }
   .poly-chip { display: flex; align-items: center; gap: 8px; padding: 5px 8px; background: rgba(34,197,94,0.08); border: 1px solid rgba(34,197,94,0.2); border-radius: 6px; margin-bottom: 4px; font-size: 11px; }
-  .poly-chip .chip-name { flex: 1; color: var(--text); font-weight: 500; }
+  .poly-chip .chip-name { flex: 1; color: var(--text); font-weight: 500; min-width: 0; }
 
   /* ── COORDINATE SEARCH ── */
   .coord-search-section { padding: 10px 12px; border-top: 1px solid var(--border); background: rgba(139,92,246,0.03); }
@@ -164,6 +164,16 @@
   .modal-header { padding: 18px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
   .modal-title { font-family: 'Syne', sans-serif; font-size: 16px; font-weight: 700; }
   .modal-close { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 18px; }
+  @media print {
+    .modal-overlay { position: static !important; background: none !important; backdrop-filter: none !important; display: block !important; opacity: 1 !important; pointer-events: all !important; }
+    .modal { max-height: none !important; transform: none !important; border: none !important; border-radius: 0 !important; width: 100% !important; max-width: 100% !important; box-shadow: none !important; }
+    .modal-close { display: none !important; }
+    .modal-footer { display: none !important; }
+    .modal-header { border-bottom: 1px solid #ccc !important; }
+    header, .sidebar, #map, .map-toolbar, .status-bar, #toastContainer, .draw-indicator { display: none !important; }
+    body { overflow: visible !important; height: auto !important; }
+    .main { display: block !important; overflow: visible !important; }
+  }
   .modal-close:hover { color: var(--danger); }
   .modal-body { padding: 20px; overflow-y: auto; flex: 1; }
   .modal-body::-webkit-scrollbar { width: 4px; }
@@ -233,7 +243,7 @@
       <div class="dim-section" id="sec-a">
         <div class="dim-header dim-a-header" onclick="toggleDim('sec-a','grp-a')">
           🌱 Dim A — Technical Suitability
-          <span class="dim-badge" id="cnt-a">0/5</span>
+          <span class="dim-badge" id="cnt-a">0/4</span>
           <em class="dim-chevron">›</em>
         </div>
         <div class="layer-group" id="grp-a" style="max-height:1000px">
@@ -266,16 +276,6 @@
               <div class="layer-api-status not-set" id="st-soil">No API configured</div>
             </div>
             <label class="toggle"><input type="checkbox" id="chk-soil" disabled onchange="toggleLayer('soil')"><span class="slider"></span></label>
-          </div>
-          <!-- A4 -->
-          <div class="layer-item" id="item-solar">
-            <div class="layer-icon" style="background:rgba(34,197,94,0.12)">☀️</div>
-            <div class="layer-info">
-              <div class="layer-name">Solar Irrigation (SPIS)</div>
-              <div class="layer-sub">Energy Potential</div>
-              <div class="layer-api-status not-set" id="st-solar">No API configured</div>
-            </div>
-            <label class="toggle"><input type="checkbox" id="chk-solar" disabled onchange="toggleLayer('solar')"><span class="slider"></span></label>
           </div>
           <!-- A5 -->
           <div class="layer-item" id="item-landcover">
@@ -335,7 +335,7 @@
       <div class="dim-section" id="sec-c">
         <div class="dim-header dim-c-header" onclick="toggleDim('sec-c','grp-c')">
           ⚖️ Dim C — Governance & De-confliction
-          <span class="dim-badge" id="cnt-c">0/6</span>
+          <span class="dim-badge" id="cnt-c">0/7</span>
           <em class="dim-chevron">›</em>
         </div>
         <div class="layer-group" id="grp-c" style="max-height:1000px">
@@ -567,8 +567,8 @@ const LAYER_CONFIG = {
   groundwater: {
     // A1 — Groundwater Map (Water Source)
     // ▼▼▼  EDIT: Paste your Mapbox Tileset ID and Source Layer below  ▼▼▼
-    tilesetId:   'markulyo.gia8z80xorim',    // ← A1 Groundwater Map
-    sourceLayer: 'ormin_groundwater-3vlp0e',      // ← confirmed source-layer name
+    tilesetId:   'markulyo.ngk2cwiyb64v',    // ← A1 Groundwater Map
+    sourceLayer: '',      // ← confirmed source-layer name
     // ▲▲▲  ───────────────────────────────────────────────────────────  ▲▲▲
     color:    '#22c55e',
     type:     'fill',   // 'fill' for polygons, 'line' for linear features
@@ -593,17 +593,6 @@ const LAYER_CONFIG = {
     sourceLayer: '',    // ← PASTE: source layer name
     // ▲▲▲  ─────  ▲▲▲
     color:    '#a3e635',
-    type:     'fill',
-    opacity:  0.30,
-  },
-
-  solar: {
-    // A4 — Suitability of Solar Powered Irrigation System (Energy Potential)
-    // ▼▼▼  EDIT  ▼▼▼
-    tilesetId:   '',    // ← PASTE: A4 Solar Irrigation (SPIS) tileset ID
-    sourceLayer: '',    // ← PASTE: source layer name
-    // ▲▲▲  ─────  ▲▲▲
-    color:    '#fbbf24',
     type:     'fill',
     opacity:  0.30,
   },
@@ -749,7 +738,6 @@ const LAYER_META = {
   groundwater: { name:'Groundwater Map',           sub:'Water Source',                dim:'A', icon:'💧' },
   climate:     { name:'Climate Type',              sub:'Water Availability',          dim:'A', icon:'🌤' },
   soil:        { name:'Soil Suitability',          sub:'Agro-potential / Type',       dim:'A', icon:'🌍' },
-  solar:       { name:'Solar Irrigation (SPIS)',   sub:'Energy Potential',            dim:'A', icon:'☀️' },
   landcover:   { name:'Land Cover 2015',           sub:'Current Land Status',         dim:'A', icon:'🗺' },
   flood:       { name:'Flood Susceptibility',      sub:'Rain-Induced Hazard',         dim:'B', icon:'🌊' },
   landslide:   { name:'Landslide Susceptibility',  sub:'Rain-Induced Hazard',         dim:'B', icon:'⛰' },
@@ -1513,16 +1501,17 @@ function updatePolyPanel() {
   const sec = document.getElementById('polySection');
   const lst = document.getElementById('polyList');
   sec.style.display = drawPolys.length ? 'block' : 'none';
-  lst.innerHTML = drawPolys.map((p,i) =>
-    `<div class="poly-chip">
-      <span>⬡</span>
-      <div class="chip-name" style="display:flex;flex-direction:column;gap:1px">
-        <span>${p.properties.name}</span>
-        <span style="font-size:10px;color:var(--accent2);font-weight:600">${fmtHa(p.properties.area_ha||0)}</span>
+  lst.innerHTML = drawPolys.map((p,i) => {
+    const ha = p.properties.area_ha || 0;
+    return `<div class="poly-chip" style="align-items:flex-start">
+      <span style="margin-top:2px">⬡</span>
+      <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px">
+        <span style="font-weight:500;color:var(--text)">${p.properties.name}</span>
+        <span style="font-size:10px;color:#22c55e;font-weight:700">${fmtHa(ha)}</span>
       </div>
       <button class="chip-del" onclick="deletePoly(${i})">✕</button>
-    </div>`
-  ).join('');
+    </div>`;
+  }).join('');
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -1632,16 +1621,17 @@ function updateKMLPanel() {
   const sec = document.getElementById('kmlSection');
   const lst = document.getElementById('kmlList');
   sec.style.display = uploadedKMLs.length ? 'block' : 'none';
-  lst.innerHTML = uploadedKMLs.map((k,i) =>
-    `<div class="kml-chip">
-      <span>📄</span>
-      <div class="chip-name" style="display:flex;flex-direction:column;gap:1px" title="${k.name}">
-        <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${k.name}</span>
-        ${k.area_ha > 0 ? `<span style="font-size:10px;color:var(--accent2);font-weight:600">${fmtHa(k.area_ha)}</span>` : ''}
+  lst.innerHTML = uploadedKMLs.map((k,i) => {
+    const areaLabel = k.area_ha > 0 ? `<span style="font-size:10px;color:#22c55e;font-weight:700">${fmtHa(k.area_ha)}</span>` : '';
+    return `<div class="kml-chip" style="align-items:flex-start">
+      <span style="margin-top:2px">📄</span>
+      <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px" title="${k.name}">
+        <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500;color:var(--text)">${k.name}</span>
+        ${k.area_ha > 0 ? `<span style="font-size:10px;color:#22c55e;font-weight:700">${fmtHa(k.area_ha)}</span>` : ''}
       </div>
       <button class="chip-del" onclick="removeKML(${i})">✕</button>
-    </div>`
-  ).join('');
+    </div>`;
+  }).join('');
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -1766,8 +1756,7 @@ function exportMarkersKML() {
     <name>${m.name}</name>
     <Point><coordinates>${m.lng},${m.lat},0</coordinates></Point>
   </Placemark>`
-  ).join('
-');
+  ).join('\n');
   const kml = `<?xml version="1.0" encoding="UTF-8"?>
 <kml xmlns="http://www.opengis.net/kml/2.2">
 <Document>
@@ -1882,6 +1871,93 @@ function buildAttrDetail(attrResult, layerMeta) {
   return `<div style="margin-top:5px">${fieldLabel}<div style="margin-top:3px">${chips}</div></div>`;
 }
 
+function getMarkerPixel(lng, lat) {
+  // Returns a tiny 4px bbox around the marker's screen pixel for queryRenderedFeatures
+  const pt = map.project([lng, lat]);
+  const r = 4;
+  const canvas = map.getCanvas();
+  return [
+    Math.max(0, pt.x - r), Math.max(0, pt.y - r),
+    Math.min(canvas.width, pt.x + r), Math.min(canvas.height, pt.y + r)
+  ];
+}
+
+function getMarkerOverlap(layerId, lng, lat) {
+  // Query a small bbox around the exact marker pixel
+  const fillLyr = 'lyr-' + layerId + '-fill';
+  const lineLyr = 'lyr-' + layerId;
+  const lyrToQuery = map.getLayer(fillLyr) ? fillLyr : map.getLayer(lineLyr) ? lineLyr : null;
+  if (!lyrToQuery) return null;
+
+  const bbox = getMarkerPixel(lng, lat);
+  const features = map.queryRenderedFeatures([[bbox[0], bbox[1]], [bbox[2], bbox[3]]], { layers: [lyrToQuery] });
+  if (!features || !features.length) return null;
+
+  const cs = LAYER_COLOR_STATE[layerId];
+  const colorField = cs && cs.field ? cs.field : null;
+
+  if (colorField) {
+    const vals = [...new Set(features.map(f => f.properties[colorField]).filter(v => v != null).map(v => String(v)))];
+    return { field: colorField, values: vals, count: features.length };
+  }
+  // Fallback: first feature's readable props
+  const firstProps = features[0].properties || {};
+  const keyEntries = Object.entries(firstProps).filter(([k]) => !/^(id|fid|gid|objectid|shape_)/i.test(k)).slice(0, 4).map(([k, v]) => k + ': ' + v);
+  return { field: null, values: keyEntries, count: features.length };
+}
+
+function buildMarkerOverlapSection(active) {
+  if (!placedMarkers.length || !active.length) return '';
+
+  const rows = placedMarkers.map(m => {
+    const layerResults = active.map(id => {
+      const res = getMarkerOverlap(id, m.lng, m.lat);
+      if (!res || !res.values.length) return null;
+      const cs = LAYER_COLOR_STATE[id];
+      const colorMap = cs && res.field && cs.valueMap[res.field] ? cs.valueMap[res.field] : {};
+      const chips = res.values.slice(0, 8).map(v => {
+        const col = colorMap[v] || '#64748b';
+        return `<span style="display:inline-flex;align-items:center;gap:3px;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12);border-radius:4px;padding:1px 6px;margin:2px 2px 0 0;font-size:10px">
+          <span style="width:7px;height:7px;border-radius:2px;background:${col};flex-shrink:0;display:inline-block"></span>${v}
+        </span>`;
+      }).join('');
+      const fieldLabel = res.field
+        ? `<span style="font-size:10px;color:var(--accent2);font-weight:600">${res.field}</span>`
+        : `<span style="font-size:10px;color:var(--muted)">attributes</span>`;
+      return `<div style="margin-bottom:7px;padding:6px 8px;background:rgba(255,255,255,0.03);border-radius:6px;border:1px solid var(--border)">
+        <div style="font-size:10px;color:var(--muted);margin-bottom:3px">
+          <span style="color:var(--text2);font-weight:600">${LAYER_META[id].name}</span>
+          &nbsp;·&nbsp;Field: ${fieldLabel}
+        </div>
+        <div>${chips}</div>
+      </div>`;
+    }).filter(Boolean).join('');
+
+    if (!layerResults) return `<div style="margin-bottom:10px;padding:8px 10px;background:rgba(139,92,246,0.06);border:1px solid rgba(139,92,246,0.2);border-radius:8px">
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+        <span>📍</span>
+        <strong style="font-size:12px">${m.name}</strong>
+        <span style="font-size:10px;color:#8b5cf6">${m.lat.toFixed(5)}, ${m.lng.toFixed(5)}</span>
+      </div>
+      <div style="font-size:11px;color:var(--muted)">No layer features detected at this location — ensure the map is zoomed to this marker.</div>
+    </div>`;
+
+    return `<div style="margin-bottom:12px;padding:8px 10px;background:rgba(139,92,246,0.06);border:1px solid rgba(139,92,246,0.2);border-radius:8px">
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">
+        <span>📍</span>
+        <strong style="font-size:12px">${m.name}</strong>
+        <span style="font-size:10px;color:#8b5cf6">${m.lat.toFixed(5)}, ${m.lng.toFixed(5)}</span>
+      </div>
+      ${layerResults}
+    </div>`;
+  }).join('');
+
+  return `<div class="rpt-section">
+    <div class="rpt-section-title">📍 Marker Layer Overlap Detail</div>
+    ${rows}
+  </div>`;
+}
+
 function openReport() {
   const now    = new Date();
   const active = LAYER_IDS.filter(id => STATE[id].visible);
@@ -1919,7 +1995,6 @@ function openReport() {
       { id:'groundwater', cls:'val-ok', icon:'💧',  title:'Groundwater Map',           body:'Groundwater data is active for the site area.' },
       { id:'climate',   cls:'val-ok',  icon:'🌤',  title:'Climate Type',              body:'Climate classification data is active for the site area.' },
       { id:'soil',      cls:'val-ok',  icon:'🌍',  title:'Soil Suitability',          body:'Soil classification data is active for the site area.' },
-      { id:'solar',     cls:'val-ok',  icon:'☀️',  title:'Solar Irrigation (SPIS)',   body:'Solar energy potential data is active for the site area.' },
       { id:'landcover', cls:'val-ok',  icon:'🗺',  title:'Land Cover',                body:'Land cover classification is active for the site area.' },
       { id:'irrigation',cls:'val-ok',  icon:'🏗',  title:'Existing Irrigation',       body:'Existing irrigation system data is active for the site area.' },
       { id:'pia',       cls:'val-ok',  icon:'📌',  title:'Potential Irrigable Area',  body:'Site falls within a Potential Irrigable Area. Coordinate with NIA for irrigation development planning.' },
@@ -1968,9 +2043,6 @@ function openReport() {
       </div>`;
     });
 
-    if (dimA.includes('groundwater') && dimA.includes('solar') && dimC.includes('slope')) {
-      valHtml += `<div class="val-item val-ok"><span style="font-size:15px">✅</span><div><strong>High SPIS Suitability Indicators</strong><br>Groundwater, solar energy potential, and slope criteria are favorable for Solar-Powered Irrigation System development.</div></div>`;
-    }
     if (!valHtml) {
       valHtml = `<div class="val-item val-ok"><span style="font-size:15px">✅</span><div><strong>No critical conflicts detected</strong><br>No conflicts found from active layers. Activate more layers for comprehensive validation.</div></div>`;
     }
@@ -2021,6 +2093,8 @@ function openReport() {
       <div class="rpt-section-title">🔍 Overlap & Conflict Validation</div>
       ${valHtml}
     </div>
+
+    ${buildMarkerOverlapSection(active)}
 
 
     <div style="font-size:11px;color:var(--muted);line-height:1.7;background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:13px">
